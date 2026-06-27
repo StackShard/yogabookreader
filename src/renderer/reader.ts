@@ -48,7 +48,7 @@ async function main(): Promise<void> {
 
   // The help diagram exists on every window (shown on both screens on request);
   // the control overlay lives only on the right (or single) window.
-  const help = new HelpOverlay(() => reader.markHelpShown());
+  const help = new HelpOverlay(() => reader.dismissHelp());
   const overlay =
     role === 'left'
       ? null
@@ -121,7 +121,7 @@ async function main(): Promise<void> {
   reader.onRender((instruction) => {
     zoomPreset = instruction.zoomPreset;
     overlay?.setProgress(instruction.pages, totalPages);
-    prefetch(instruction.prefetch);
+    prefetch(instruction.prefetch, canvas.height);
     const token = ++renderSeq;
     resolveWithRetry(instruction)
       .then((resolved) => {
@@ -139,6 +139,7 @@ async function main(): Promise<void> {
   reader.onShowError((error) => showError(stage, error));
   reader.onShowOverlay(() => overlay?.show());
   reader.onShowHelp(() => help.show());
+  reader.onHideHelp(() => help.hide());
   reader.onFullScreenChanged((isFs) => overlay?.setFullScreenState(isFs));
   reader.onSetDim((level) => {
     dimLayer.style.opacity = level === null ? '0' : String((100 - level) / 100);
@@ -157,10 +158,14 @@ async function main(): Promise<void> {
     if (!document.hidden) reader.ready();
   });
 
+  // Debounce resize so a burst of events triggers a single re-render.
+  let resizeTimer: ReturnType<typeof setTimeout> | null = null;
   window.addEventListener('resize', () => {
-    setupCanvas(canvas);
-    // Re-request the current spread so it repaints at the new size.
-    reader.ready();
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      setupCanvas(canvas);
+      reader.ready(); // re-request the current spread at the new size
+    }, 150);
   });
 
   reader.ready();

@@ -8,11 +8,13 @@
 export class HelpOverlay {
   private readonly root: HTMLElement;
 
-  constructor(private readonly onClose?: () => void) {
+  /** `onDismiss` is called on tap; the actual hide is driven externally so a tap
+   *  on either screen can close the help on both. */
+  constructor(private readonly onDismiss: () => void) {
     this.root = document.createElement('div');
     this.root.className = 'help hidden';
     this.root.append(this.buildZones(), this.buildHints());
-    this.root.addEventListener('click', () => this.hide());
+    this.root.addEventListener('click', () => this.onDismiss());
     document.body.appendChild(this.root);
   }
 
@@ -57,6 +59,5 @@ export class HelpOverlay {
 
   hide(): void {
     this.root.classList.add('hidden');
-    this.onClose?.();
   }
 }
