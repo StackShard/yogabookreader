@@ -45,7 +45,14 @@ function createWindow(role: WindowRole, bounds: DisplayInfo['bounds'], windowed:
       sandbox: false,
     },
   });
-  void win.loadFile(RENDERER_HTML, { query: { role } });
+  // In `electron-vite dev` the renderer is served from a dev server whose URL is
+  // exposed here; packaged/preview builds load the bundled HTML from disk.
+  const devUrl = process.env['ELECTRON_RENDERER_URL'];
+  if (devUrl) {
+    void win.loadURL(`${devUrl}/index.html?role=${role}`);
+  } else {
+    void win.loadFile(RENDERER_HTML, { query: { role } });
+  }
   return win;
 }
 
