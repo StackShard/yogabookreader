@@ -24,7 +24,7 @@ import {
 import { loadPdfMeta } from './pdf-meta.js';
 import { ReaderSession } from './session.js';
 import { scanFolder } from './library-scanner.js';
-import { currentPlacement, type ReaderWindow } from './windows.js';
+import { currentPlacement, loadPage, type ReaderPage, type ReaderWindow } from './windows.js';
 import {
   getFileState,
   getRecentFiles,
@@ -35,24 +35,17 @@ import {
 
 export class ReaderController {
   private session: ReaderSession | null = null;
+  private pendingError: ReaderError | null = null;
   private windows: ReaderWindow[] = [];
 
   setWindows(windows: ReaderWindow[]): void {
     this.windows = windows;
-    this.initWindows();
-  }
-
-  /** Tell each window its role once it is ready. */
-  private initWindows(): void {
-    for (const { role, window } of this.windows) {
-      window.webContents.once('did-finish-load', () => {
-        window.webContents.send(MainToRenderer.init, { role });
-      });
-    }
   }
 
   registerHandlers(): void {
-    ipcMain.on(RendererToMain.ready, () => this.broadcastRender());
+    // A reader window signals `ready` after each (re)load; push it the current
+    // document + spread, or the pending error if a load failed.
+    ipcMain.on(RendererToMain.ready, (e) => this.onRendererReady(e.sender));
     ipcMain.on(RendererToMain.next, () => {
       this.session?.next();
       this.persistAndRender();
@@ -77,6 +70,7 @@ export class ReaderController {
       void this.setSpreadEncoded(value);
     });
     ipcMain.on(RendererToMain.requestOverlay, () => this.showOverlay());
+    ipcMain.on(RendererToMain.openLibrary, () => this.openLibraryView());
     ipcMain.on(RendererToMain.exitFullScreen, () => {
       for (const { window } of this.windows) window.setFullScreen(false);
     });
@@ -118,11 +112,43 @@ export class ReaderController {
     }
   }
 
+  /** Navigate every window to the splash launcher or the reader page. */
+  private navigateAll(page: ReaderPage): void {
+    for (const { role, window } of this.windows) {
+      if (!window.isDestroyed()) loadPage(window, role, page);
+    }
+  }
+
+  /** Return all windows to the splash/library launcher (closes the document). */
+  private openLibraryView(): void {
+    this.session = null;
+    this.pendingError = null;
+    this.navigateAll('splash');
+  }
+
+  /** Push current state to a window once its reader page has (re)loaded. */
+  private onRendererReady(sender: Electron.WebContents): void {
+    const win = this.windows.find((w) => w.window.webContents === sender);
+    if (!win || win.window.isDestroyed()) return;
+    if (this.session) {
+      win.window.webContents.send(MainToRenderer.documentLoaded, this.session.describe());
+      win.window.webContents.send(MainToRenderer.render, this.session.instructionFor(win.role));
+    } else if (this.pendingError) {
+      win.window.webContents.send(MainToRenderer.showError, this.pendingError);
+    }
+  }
+
+  private failOpen(error: ReaderError): void {
+    this.session = null;
+    this.pendingError = error;
+    this.navigateAll('reader'); // reader page hosts the error UI
+  }
+
   /** Open a document, building a session and broadcasting it to all windows. */
   async openDocument(filePath: string): Promise<void> {
     const type = detectType(filePath);
     if (!type) {
-      this.broadcastError({
+      this.failOpen({
         filePath,
         reason: 'unsupported',
         message: 'Unsupported file type.',
@@ -170,18 +196,15 @@ export class ReaderController {
         });
       }
     } catch (err) {
-      if (err instanceof FileLoadError) {
-        this.broadcastError(err.error);
-      } else {
-        this.broadcastError({
-          filePath,
-          reason: 'unknown',
-          message: (err as Error).message,
-        });
-      }
+      this.failOpen(
+        err instanceof FileLoadError
+          ? err.error
+          : { filePath, reason: 'unknown', message: (err as Error).message },
+      );
       return;
     }
 
+    this.pendingError = null;
     recordRecentFile({
       filePath,
       displayName: this.session.describe().displayName,
@@ -189,11 +212,9 @@ export class ReaderController {
       lastReadAt: Date.now(),
     });
 
-    const info = this.session.describe();
-    for (const { window } of this.windows) {
-      window.webContents.send(MainToRenderer.documentLoaded, info);
-    }
-    this.broadcastRender();
+    // Bring every window to the reader page; each will request its content via
+    // `ready` once loaded (see onRendererReady).
+    this.navigateAll('reader');
   }
 
   /**
@@ -248,12 +269,6 @@ export class ReaderController {
     for (const { role, window } of this.windows) {
       if (window.isDestroyed()) continue;
       window.webContents.send(MainToRenderer.render, this.session.instructionFor(role));
-    }
-  }
-
-  private broadcastError(error: ReaderError): void {
-    for (const { window } of this.windows) {
-      if (!window.isDestroyed()) window.webContents.send(MainToRenderer.showError, error);
     }
   }
 

@@ -17,11 +17,28 @@ export interface ReaderWindow {
   window: BrowserWindow;
 }
 
+/** Which HTML document a window is showing. */
+export type ReaderPage = 'splash' | 'reader';
+
 const PRELOAD = path.join(__dirname, '../preload/preload.js');
-const RENDERER_HTML = path.join(__dirname, '../renderer/index.html');
 
 function toDisplayInfo(d: Electron.Display): DisplayInfo {
   return { id: d.id, bounds: d.bounds };
+}
+
+/**
+ * Load a page (splash launcher or reader) into a window, carrying its role.
+ * Uses the electron-vite dev server URL in development and the bundled HTML in
+ * packaged/preview builds.
+ */
+export function loadPage(win: BrowserWindow, role: WindowRole, page: ReaderPage): void {
+  const file = page === 'splash' ? 'splash.html' : 'index.html';
+  const devUrl = process.env['ELECTRON_RENDERER_URL'];
+  if (devUrl) {
+    void win.loadURL(`${devUrl}/${file}?role=${role}`);
+  } else {
+    void win.loadFile(path.join(__dirname, `../renderer/${file}`), { query: { role } });
+  }
 }
 
 export function currentPlacement(): Placement {
@@ -45,14 +62,9 @@ function createWindow(role: WindowRole, bounds: DisplayInfo['bounds'], windowed:
       sandbox: false,
     },
   });
-  // In `electron-vite dev` the renderer is served from a dev server whose URL is
-  // exposed here; packaged/preview builds load the bundled HTML from disk.
-  const devUrl = process.env['ELECTRON_RENDERER_URL'];
-  if (devUrl) {
-    void win.loadURL(`${devUrl}/index.html?role=${role}`);
-  } else {
-    void win.loadFile(RENDERER_HTML, { query: { role } });
-  }
+  // Boot into the splash/library launcher so there is an obvious entry point;
+  // the main process navigates windows to the reader when a document opens.
+  loadPage(win, role, 'splash');
   return win;
 }
 

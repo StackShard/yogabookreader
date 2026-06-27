@@ -31,6 +31,7 @@ const bridge: ReaderBridge = {
   ready: () => ipcRenderer.send(RendererToMain.ready),
   openFile: (filePath: string) => ipcRenderer.send(RendererToMain.openFile, filePath),
   pickFile: () => ipcRenderer.send(RendererToMain.pickFile),
+  openLibrary: () => ipcRenderer.send(RendererToMain.openLibrary),
   next: () => ipcRenderer.send(RendererToMain.next),
   prev: () => ipcRenderer.send(RendererToMain.prev),
   jumpToPage: (pageIndex: number) => ipcRenderer.send(RendererToMain.jumpToPage, pageIndex),

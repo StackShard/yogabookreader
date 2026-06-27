@@ -67,6 +67,7 @@ export const RendererToMain = {
   ready: 'r2m:ready',
   openFile: 'r2m:open-file',
   pickFile: 'r2m:pick-file',
+  openLibrary: 'r2m:open-library',
   getLibrary: 'r2m:get-library',
   next: 'r2m:next',
   prev: 'r2m:prev',
@@ -105,6 +106,7 @@ export interface ReaderBridge {
   ready(): void;
   openFile(filePath: string): void;
   pickFile(): void;
+  openLibrary(): void;
   next(): void;
   prev(): void;
   jumpToPage(pageIndex: number): void;

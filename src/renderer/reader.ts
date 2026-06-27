@@ -43,7 +43,7 @@ async function main(): Promise<void> {
           onJump: (p) => reader.jumpToPage(p),
           onToggleDirection: () => reader.toggleDirection(),
           onSetZoom: (preset) => reader.setZoomPreset(preset),
-          onOpenLibrary: () => (location.href = 'splash.html'),
+          onOpenLibrary: () => reader.openLibrary(),
           onExitFullScreen: () => reader.exitFullScreen(),
         });
 
