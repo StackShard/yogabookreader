@@ -23,10 +23,11 @@ if (!app.requestSingleInstanceLock()) {
 registerPrivilegedScheme();
 
 const controller = new ReaderController();
+// The controller rebuilds windows itself on layout changes, so give it a factory.
+controller.setWindowFactory(() => createReaderWindows(getSettings().windowedMode));
 
 function bootWindows(): void {
-  const windowed = getSettings().windowedMode;
-  controller.setWindows(createReaderWindows(windowed));
+  controller.setWindows(createReaderWindows(getSettings().windowedMode));
 }
 
 app.whenReady().then(async () => {
@@ -38,10 +39,10 @@ app.whenReady().then(async () => {
   controller.registerHandlers();
   bootWindows();
 
-  // Survive docking/undocking: re-evaluate the display layout.
-  screen.on('display-added', () => controller.refreshDisplayMode());
-  screen.on('display-removed', () => controller.refreshDisplayMode());
-  screen.on('display-metrics-changed', () => controller.refreshDisplayMode());
+  // Survive docking/undocking and posture changes: re-evaluate the layout.
+  screen.on('display-added', () => controller.relayout());
+  screen.on('display-removed', () => controller.relayout());
+  screen.on('display-metrics-changed', () => controller.relayout());
 
   app.on('activate', () => {
     if (controller.allWindows().length === 0) bootWindows();
@@ -49,12 +50,19 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  // Don't quit while windows are being torn down and recreated for a layout change.
+  if (controller.isRebuilding) return;
   if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('will-quit', async (event) => {
   // Clean the comic temp directory on exit (PRD §Rendering "CBZ/CBR").
   event.preventDefault();
-  await cleanupAllTemp();
-  app.exit(0);
+  try {
+    await cleanupAllTemp();
+  } catch (err) {
+    log('temp cleanup on quit failed:', (err as Error).message);
+  } finally {
+    app.exit(0);
+  }
 });

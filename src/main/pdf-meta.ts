@@ -50,12 +50,18 @@ export async function loadPdfMeta(filePath: string, override?: boolean): Promise
   }
 
   const dims: PageDimensions[] = [];
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i);
-    const viewport = page.getViewport({ scale: 1 });
-    dims.push({ width: viewport.width, height: viewport.height });
+  const totalPages = doc.numPages;
+  try {
+    for (let i = 1; i <= totalPages; i++) {
+      const page = await doc.getPage(i);
+      const viewport = page.getViewport({ scale: 1 });
+      dims.push({ width: viewport.width, height: viewport.height });
+    }
+  } finally {
+    // Release the worker/document resources; the renderer parses its own copy.
+    await doc.destroy();
   }
 
   const { isSpreadEncoded, pageAspects } = classifyDocument(dims, override);
-  return { totalPages: doc.numPages, pageAspects, isSpreadEncoded };
+  return { totalPages, pageAspects, isSpreadEncoded };
 }

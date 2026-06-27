@@ -5,7 +5,7 @@
  * the main process when the window was created.
  */
 
-import { renderTarget, prefetch } from './render-engine.js';
+import { resolveTarget, paintSource, clearCanvas, prefetch, resetCaches } from './render-engine.js';
 import { attachNavigation } from './touch.js';
 import { ControlOverlay } from './overlay.js';
 import { showError } from './error.js';
@@ -32,6 +32,10 @@ async function main(): Promise<void> {
   const reader = window.reader;
   let spreadCount = 0;
   let zoomPreset = DEFAULT_SETTINGS.defaultZoomPreset;
+  let currentFilePath: string | null = null;
+  // Monotonic token so a slow async resolve from an earlier render can't paint
+  // over a newer one during rapid page turns.
+  let renderSeq = 0;
 
   // The overlay lives only in the right window (or the single-window fallback).
   const overlay =
@@ -44,7 +48,8 @@ async function main(): Promise<void> {
           onToggleDirection: () => reader.toggleDirection(),
           onSetZoom: (preset) => reader.setZoomPreset(preset),
           onOpenLibrary: () => reader.openLibrary(),
-          onExitFullScreen: () => reader.exitFullScreen(),
+          onToggleFullScreen: () => reader.toggleFullScreen(),
+          onQuit: () => reader.quit(),
         });
 
   const settings = await reader.getSettings().catch(() => DEFAULT_SETTINGS);
@@ -66,17 +71,34 @@ async function main(): Promise<void> {
   reader.onDocumentLoaded((info) => {
     spreadCount = info.spreadCount;
     zoomPreset = info.zoomPreset;
+    // Free the previous document's cached pages when switching files.
+    if (currentFilePath !== null && currentFilePath !== info.filePath) resetCaches();
+    currentFilePath = info.filePath;
   });
 
   reader.onRender((instruction) => {
     zoomPreset = instruction.zoomPreset;
-    void renderTarget(canvas, instruction.current, zoomPreset);
-    prefetch(instruction.prefetch);
     overlay?.setCounter(instruction.spreadIndex, spreadCount);
+    prefetch(instruction.prefetch);
+    const token = ++renderSeq;
+    resolveTarget(instruction.current, canvas.height)
+      .then((resolved) => {
+        if (token !== renderSeq) return; // a newer render superseded this one
+        if (resolved) paintSource(canvas, resolved, zoomPreset);
+        else clearCanvas(canvas);
+      })
+      .catch((err) => console.error('render failed:', err));
   });
 
   reader.onShowError((error) => showError(stage, error));
   reader.onShowOverlay(() => overlay?.show());
+  reader.onFullScreenChanged((isFs) => overlay?.setFullScreenState(isFs));
+
+  // Keyboard: Escape toggles full-screen, Ctrl+Q quits.
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') reader.toggleFullScreen();
+    else if (e.key.toLowerCase() === 'q' && (e.ctrlKey || e.metaKey)) reader.quit();
+  });
 
   window.addEventListener('resize', () => {
     setupCanvas(canvas);

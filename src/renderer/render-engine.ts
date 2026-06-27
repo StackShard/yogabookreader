@@ -1,10 +1,13 @@
 /**
  * Renderer painting engine (PRD §Rendering, US#13/#14, §pre-render buffer).
  *
- * Paints a {@link RenderTarget} onto a canvas: PDF pages via pdf.js, comic pages
- * via images. Supports the three zoom presets and the half-crop used for
- * centerfold / spread-encoded pages. PDF documents and decoded images are cached
- * so neighbouring spreads can be pre-rendered for instant page turns.
+ * Resolves a {@link RenderTarget} to a drawable source (PDF page via pdf.js, or a
+ * comic image) and paints it onto a canvas with the chosen zoom preset and the
+ * half-crop used for centerfold / spread-encoded pages.
+ *
+ * Resolve and paint are split so the caller can discard a stale async resolve
+ * (rapid page turns) before painting. Decoded images are kept in a small LRU so
+ * neighbouring spreads stay warm without unbounded memory growth.
  */
 
 import * as pdfjsLib from 'pdfjs-dist';
@@ -16,8 +19,35 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 type Source = CanvasImageSource & { width: number; height: number };
 
+/** Max decoded comic images kept in memory at once (current ± neighbours). */
+const IMAGE_CACHE_CAP = 16;
+
 const pdfDocs = new Map<string, Promise<pdfjsLib.PDFDocumentProxy>>();
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
+
+/** A drawable source plus the half-crop to apply when painting it. */
+export interface ResolvedSource {
+  source: Source;
+  half?: Side;
+}
+
+/** LRU: refresh recency by re-inserting. */
+function touch<K, V>(map: Map<K, V>, key: K): void {
+  const v = map.get(key);
+  if (v !== undefined) {
+    map.delete(key);
+    map.set(key, v);
+  }
+}
+
+/** Evict oldest entries until within capacity. */
+function evict<K, V>(map: Map<K, V>, cap: number): void {
+  while (map.size > cap) {
+    const oldest = map.keys().next().value as K | undefined;
+    if (oldest === undefined) break;
+    map.delete(oldest);
+  }
+}
 
 function getPdf(filePath: string): Promise<pdfjsLib.PDFDocumentProxy> {
   let doc = pdfDocs.get(filePath);
@@ -35,17 +65,29 @@ function getPdf(filePath: string): Promise<pdfjsLib.PDFDocumentProxy> {
 }
 
 function getImage(imagePath: string): Promise<HTMLImageElement> {
-  let img = imageCache.get(imagePath);
-  if (!img) {
-    img = new Promise((resolve, reject) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error(`Failed to load image: ${imagePath}`));
-      el.src = fileUrl(imagePath);
-    });
-    imageCache.set(imagePath, img);
+  const cached = imageCache.get(imagePath);
+  if (cached) {
+    touch(imageCache, imagePath);
+    return cached;
   }
+  const img = new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error(`Failed to load image: ${imagePath}`));
+    el.src = fileUrl(imagePath);
+  });
+  imageCache.set(imagePath, img);
+  evict(imageCache, IMAGE_CACHE_CAP);
   return img;
+}
+
+/** Release all cached PDFs/images. Call when switching documents. */
+export function resetCaches(): void {
+  for (const docPromise of pdfDocs.values()) {
+    docPromise.then((d) => d.destroy()).catch(() => undefined);
+  }
+  pdfDocs.clear();
+  imageCache.clear();
 }
 
 function fileUrl(p: string): string {
@@ -74,9 +116,23 @@ function presetScale(preset: ZoomPreset, sw: number, sh: number, dw: number, dh:
   }
 }
 
-function paint(canvas: HTMLCanvasElement, source: Source, half: Side | undefined, preset: ZoomPreset): void {
+/** Clear a canvas to black (used for blank slots and before an error). */
+export function clearCanvas(canvas: HTMLCanvasElement): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+/** Paint a resolved source onto the canvas with the given zoom preset. */
+export function paintSource(
+  canvas: HTMLCanvasElement,
+  resolved: ResolvedSource,
+  preset: ZoomPreset,
+): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const { source, half } = resolved;
   const { sx, sy, sw, sh } = sourceRegion(source, half);
   const scale = presetScale(preset, sw, sh, canvas.width, canvas.height);
   const dw = sw * scale;
@@ -105,27 +161,21 @@ async function renderPdfToSource(filePath: string, pageIndex: number, targetHeig
   return off as unknown as Source;
 }
 
-/** Paint a render target onto the given canvas. Blank targets clear to black. */
-export async function renderTarget(
-  canvas: HTMLCanvasElement,
+/**
+ * Resolve a render target to a drawable source. Returns null for blank slots.
+ * Does not touch the visible canvas, so the caller can discard a stale result.
+ */
+export async function resolveTarget(
   target: RenderTarget,
-  preset: ZoomPreset,
-): Promise<void> {
-  if (target.kind === 'blank') {
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    return;
-  }
+  targetHeight: number,
+): Promise<ResolvedSource | null> {
+  if (target.kind === 'blank') return null;
   if (target.kind === 'pdf') {
-    const source = await renderPdfToSource(target.filePath, target.pageIndex, canvas.height);
-    paint(canvas, source, target.half, preset);
-    return;
+    const source = await renderPdfToSource(target.filePath, target.pageIndex, targetHeight);
+    return { source, half: target.half };
   }
   const img = await getImage(target.imagePath);
-  paint(canvas, img as unknown as Source, target.half, preset);
+  return { source: img as unknown as Source, half: target.half };
 }
 
 /** Warm the cache for upcoming targets so page turns are instant (pre-render). */
