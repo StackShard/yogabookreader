@@ -1,0 +1,16 @@
+appId: ca.eightbitninja.yogabookreader
+productName: Yoga Book Reader
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+win:
+  target:
+    - target: portable
+      arch:
+        - x64
+portable:
+  artifactName: YogaBookReader-${version}-portable.exe
+# Portable target: no installer, no registry entries, single .exe (PRD §Packaging).
