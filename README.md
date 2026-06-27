@@ -81,6 +81,27 @@ The portable `.exe` under `dist\` needs no installation — copy it anywhere and
 it. Plug in both Yoga Book screens (portrait) before launching for the two-page
 spread; with one screen it falls back to single-page mode.
 
+## Run it like a normal app (no dev server)
+
+`npm run dev` is only for development. For everyday use, build the portable
+executable once and launch that — no terminal, no dev server:
+
+```powershell
+npm run package
+```
+
+This produces `dist\YogaBookReader-1.0.0-portable.exe`. Then either double-click it,
+or make it easy to launch:
+
+- **Desktop shortcut:** in File Explorer, right-click the `.exe` →
+  **Show more options** → **Send to** → **Desktop (create shortcut)**.
+- **Pin to taskbar/Start:** right-click the `.exe` → **Pin to taskbar** (or
+  **Pin to Start**).
+
+You only need to re-run `npm run package` after pulling new changes. Hold the device
+in book posture (two side-by-side portrait screens) before launching for the
+two-page spread.
+
 ## Status
 
 The pure-logic core is complete and unit-tested (54 tests). The Electron

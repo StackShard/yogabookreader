@@ -8,13 +8,20 @@
 
 import path from 'node:path';
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
-import type { DisplayMode, ReadingDirection, ZoomPreset } from '../core/types.js';
+import {
+  BRIGHTNESS_MAX,
+  BRIGHTNESS_MIN,
+  type DisplayMode,
+  type ReadingDirection,
+  type ZoomPreset,
+} from '../core/types.js';
 import {
   MainToRenderer,
   RendererToMain,
   type LibraryItemView,
   type ReaderError,
   type RecentFileView,
+  type ResumeInfo,
 } from '../shared/ipc.js';
 import {
   detectType,
@@ -32,7 +39,9 @@ import {
   getSettings,
   recordRecentFile,
   saveFileState,
+  updateSettings,
 } from './state-store.js';
+import { setHardwareBrightness } from './brightness.js';
 
 export class ReaderController {
   private session: ReaderSession | null = null;
@@ -98,9 +107,46 @@ export class ReaderController {
     );
     ipcMain.handle(RendererToMain.getSettings, () => getSettings());
     ipcMain.handle(RendererToMain.getLibrary, () => this.getLibrary());
+    ipcMain.handle(RendererToMain.getResumeInfo, () => this.getResumeInfo());
     ipcMain.on(RendererToMain.pickFile, () => {
       this.pickFile().catch((e) => logError('pickFile failed:', e));
     });
+    ipcMain.on(RendererToMain.resume, () => this.resume());
+    ipcMain.on(RendererToMain.setBrightness, (_e, level: number) => {
+      void this.setBrightness(level);
+    });
+  }
+
+  /** The open document for the splash "Resume reading" button, if any. */
+  private getResumeInfo(): ResumeInfo | null {
+    if (!this.session) return null;
+    const info = this.session.describe();
+    return { filePath: info.filePath, displayName: info.displayName };
+  }
+
+  /** Return from the library to the current document without reloading it. */
+  private resume(): void {
+    if (this.session) this.navigateAll('reader');
+  }
+
+  /**
+   * Apply a brightness level (PRD §Settings): persist it, try the real hardware
+   * backlight, and tell the renderers whether to apply the dim-overlay fallback.
+   */
+  private async setBrightness(level: number): Promise<void> {
+    const clamped = Math.max(BRIGHTNESS_MIN, Math.min(BRIGHTNESS_MAX, Math.round(level)));
+    updateSettings({ brightness: clamped });
+    const ok = await setHardwareBrightness(clamped);
+    // null clears any dim overlay (hardware handled it); otherwise dim in-app.
+    const dim = ok ? null : clamped;
+    for (const { window } of this.windows) {
+      if (!window.isDestroyed()) window.webContents.send(MainToRenderer.setDim, dim);
+    }
+  }
+
+  /** Apply the persisted brightness once at startup. */
+  applyStoredBrightness(): void {
+    void this.setBrightness(getSettings().brightness);
   }
 
   private async getLibrary(): Promise<LibraryItemView[]> {
@@ -133,9 +179,11 @@ export class ReaderController {
     }
   }
 
-  /** Return all windows to the splash/library launcher (closes the document). */
+  /**
+   * Show the splash/library launcher. The session is kept so the user can
+   * "Resume reading" (e.g. if they opened the library by accident).
+   */
   private openLibraryView(): void {
-    this.session = null;
     this.pendingError = null;
     this.navigateAll('splash');
   }

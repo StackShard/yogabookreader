@@ -68,7 +68,10 @@ export const RendererToMain = {
   openFile: 'r2m:open-file',
   pickFile: 'r2m:pick-file',
   openLibrary: 'r2m:open-library',
+  resume: 'r2m:resume',
+  getResumeInfo: 'r2m:get-resume-info',
   getLibrary: 'r2m:get-library',
+  setBrightness: 'r2m:set-brightness',
   next: 'r2m:next',
   prev: 'r2m:prev',
   jumpToPage: 'r2m:jump-to-page',
@@ -90,6 +93,7 @@ export const MainToRenderer = {
   showError: 'm2r:show-error',
   showOverlay: 'm2r:show-overlay',
   fullScreenChanged: 'm2r:full-screen-changed',
+  setDim: 'm2r:set-dim',
 } as const;
 
 /** Payload of the one-time init message that tells a window its role. */
@@ -105,11 +109,14 @@ export interface ReaderBridge {
   onShowError(cb: (error: ReaderError) => void): void;
   onShowOverlay(cb: () => void): void;
   onFullScreenChanged(cb: (isFullScreen: boolean) => void): void;
+  onSetDim(cb: (level: number | null) => void): void;
 
   ready(): void;
   openFile(filePath: string): void;
   pickFile(): void;
   openLibrary(): void;
+  resume(): void;
+  setBrightness(level: number): void;
   next(): void;
   prev(): void;
   jumpToPage(pageIndex: number): void;
@@ -123,6 +130,7 @@ export interface ReaderBridge {
   getRecentFiles(): Promise<RecentFileView[]>;
   getSettings(): Promise<AppSettings>;
   getLibrary(): Promise<LibraryItemView[]>;
+  getResumeInfo(): Promise<ResumeInfo | null>;
 }
 
 /** A library catalogue entry as the gallery consumes it. */
@@ -130,6 +138,12 @@ export interface LibraryItemView {
   filePath: string;
   displayName: string;
   type: DocumentType;
+}
+
+/** The currently-open document, for the splash "Resume reading" button. */
+export interface ResumeInfo {
+  filePath: string;
+  displayName: string;
 }
 
 declare global {
