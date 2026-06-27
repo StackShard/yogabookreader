@@ -78,7 +78,8 @@ export const RendererToMain = {
   getRecentFiles: 'r2m:get-recent-files',
   getSettings: 'r2m:get-settings',
   requestOverlay: 'r2m:request-overlay',
-  exitFullScreen: 'r2m:exit-full-screen',
+  toggleFullScreen: 'r2m:toggle-full-screen',
+  quit: 'r2m:quit',
 } as const;
 
 /** Channels from main → renderer (webContents.send). */
@@ -88,6 +89,7 @@ export const MainToRenderer = {
   render: 'm2r:render',
   showError: 'm2r:show-error',
   showOverlay: 'm2r:show-overlay',
+  fullScreenChanged: 'm2r:full-screen-changed',
 } as const;
 
 /** Payload of the one-time init message that tells a window its role. */
@@ -102,6 +104,7 @@ export interface ReaderBridge {
   onRender(cb: (instruction: RenderInstruction) => void): void;
   onShowError(cb: (error: ReaderError) => void): void;
   onShowOverlay(cb: () => void): void;
+  onFullScreenChanged(cb: (isFullScreen: boolean) => void): void;
 
   ready(): void;
   openFile(filePath: string): void;
@@ -114,7 +117,8 @@ export interface ReaderBridge {
   setZoomPreset(preset: ZoomPreset): void;
   setSpreadEncoded(value: boolean | undefined): void;
   requestOverlay(): void;
-  exitFullScreen(): void;
+  toggleFullScreen(): void;
+  quit(): void;
 
   getRecentFiles(): Promise<RecentFileView[]>;
   getSettings(): Promise<AppSettings>;

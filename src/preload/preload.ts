@@ -27,6 +27,8 @@ const bridge: ReaderBridge = {
   onShowError: (cb: (error: ReaderError) => void) =>
     ipcRenderer.on(MainToRenderer.showError, (_e, error: ReaderError) => cb(error)),
   onShowOverlay: (cb: () => void) => ipcRenderer.on(MainToRenderer.showOverlay, () => cb()),
+  onFullScreenChanged: (cb: (isFullScreen: boolean) => void) =>
+    ipcRenderer.on(MainToRenderer.fullScreenChanged, (_e, value: boolean) => cb(value)),
 
   ready: () => ipcRenderer.send(RendererToMain.ready),
   openFile: (filePath: string) => ipcRenderer.send(RendererToMain.openFile, filePath),
@@ -40,7 +42,8 @@ const bridge: ReaderBridge = {
   setSpreadEncoded: (value: boolean | undefined) =>
     ipcRenderer.send(RendererToMain.setSpreadEncoded, value),
   requestOverlay: () => ipcRenderer.send(RendererToMain.requestOverlay),
-  exitFullScreen: () => ipcRenderer.send(RendererToMain.exitFullScreen),
+  toggleFullScreen: () => ipcRenderer.send(RendererToMain.toggleFullScreen),
+  quit: () => ipcRenderer.send(RendererToMain.quit),
 
   getRecentFiles: (): Promise<RecentFileView[]> =>
     ipcRenderer.invoke(RendererToMain.getRecentFiles),

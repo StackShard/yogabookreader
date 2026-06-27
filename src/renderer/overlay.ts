@@ -18,12 +18,14 @@ export interface OverlayCallbacks {
   onToggleDirection(): void;
   onSetZoom(preset: ZoomPreset): void;
   onOpenLibrary(): void;
-  onExitFullScreen(): void;
+  onToggleFullScreen(): void;
+  onQuit(): void;
 }
 
 export class ControlOverlay {
   private readonly root: HTMLElement;
   private readonly counter: HTMLElement;
+  private readonly fullScreenButton: HTMLButtonElement;
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
   private expanded = false;
 
@@ -32,6 +34,7 @@ export class ControlOverlay {
     this.root.className = 'overlay hidden';
     this.counter = document.createElement('span');
     this.counter.className = 'overlay-counter';
+    this.fullScreenButton = this.button('Exit Full-Screen', () => this.cb.onToggleFullScreen());
     this.build();
     document.body.appendChild(this.root);
     this.attachSwipeUp();
@@ -56,9 +59,15 @@ export class ControlOverlay {
       this.button('Full Bleed', () => this.cb.onSetZoom('full-bleed')),
       this.button('LTR / RTL', () => this.cb.onToggleDirection()),
       this.gotoInput(),
-      this.button('Exit Full-Screen', () => this.cb.onExitFullScreen()),
+      this.fullScreenButton,
+      this.button('Quit', () => this.cb.onQuit()),
     );
     this.root.append(minimal, expanded);
+  }
+
+  /** Reflect the current full-screen state on the toggle button's label. */
+  setFullScreenState(isFullScreen: boolean): void {
+    this.fullScreenButton.textContent = isFullScreen ? 'Exit Full-Screen' : 'Enter Full-Screen';
   }
 
   private button(label: string, onClick: () => void): HTMLButtonElement {

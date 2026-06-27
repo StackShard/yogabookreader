@@ -7,8 +7,8 @@
  */
 
 import path from 'node:path';
-import { BrowserWindow, dialog, ipcMain } from 'electron';
-import type { ReadingDirection, ZoomPreset } from '../core/types.js';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import type { DisplayMode, ReadingDirection, ZoomPreset } from '../core/types.js';
 import {
   MainToRenderer,
   RendererToMain,
@@ -38,9 +38,21 @@ export class ReaderController {
   private session: ReaderSession | null = null;
   private pendingError: ReaderError | null = null;
   private windows: ReaderWindow[] = [];
+  private windowFactory: () => ReaderWindow[] = () => [];
+  private rebuilding = false;
 
   setWindows(windows: ReaderWindow[]): void {
     this.windows = windows;
+  }
+
+  /** How new window sets are created (injected by the entry point). */
+  setWindowFactory(factory: () => ReaderWindow[]): void {
+    this.windowFactory = factory;
+  }
+
+  /** True while windows are being torn down and recreated for a layout change. */
+  get isRebuilding(): boolean {
+    return this.rebuilding;
   }
 
   registerHandlers(): void {
@@ -72,9 +84,8 @@ export class ReaderController {
     });
     ipcMain.on(RendererToMain.requestOverlay, () => this.showOverlay());
     ipcMain.on(RendererToMain.openLibrary, () => this.openLibraryView());
-    ipcMain.on(RendererToMain.exitFullScreen, () => {
-      for (const { window } of this.windows) window.setFullScreen(false);
-    });
+    ipcMain.on(RendererToMain.toggleFullScreen, () => this.toggleFullScreen());
+    ipcMain.on(RendererToMain.quit, () => app.quit());
 
     ipcMain.handle(RendererToMain.getRecentFiles, (): RecentFileView[] =>
       getRecentFiles().map((f) => ({
@@ -250,12 +261,60 @@ export class ReaderController {
     this.persistAndRender();
   }
 
-  /** Recompute placement after a display change and rebuild windows if needed. */
-  refreshDisplayMode(): void {
-    if (!this.session) return;
-    const mode = currentPlacement().mode === 'dual' ? 'dual' : 'single';
-    this.session.setDisplayMode(mode);
-    this.broadcastRender();
+  /**
+   * Re-evaluate the display layout after a screen change (US#26). When the
+   * topology is unchanged this just refreshes the spread layout (cheap — these
+   * events fire often). When it changes (single↔dual, e.g. rotating into book
+   * posture), the windows are rebuilt so the second screen actually appears.
+   */
+  relayout(): void {
+    const desired: DisplayMode = currentPlacement().mode === 'dual' ? 'dual' : 'single';
+    const current: DisplayMode = this.windows.length >= 2 ? 'dual' : 'single';
+    if (desired === current) {
+      if (this.session) {
+        this.session.setDisplayMode(desired);
+        this.broadcastRender();
+      }
+      return;
+    }
+    log('relayout: topology change', current, '->', desired, '- rebuilding windows');
+    this.rebuildWindows(desired);
+  }
+
+  /**
+   * Tear down the current windows and create a fresh set for the new topology.
+   * New windows are created before the old ones are destroyed so the window count
+   * never hits zero (which would trigger app quit).
+   */
+  private rebuildWindows(mode: DisplayMode): void {
+    this.rebuilding = true;
+    try {
+      const old = this.windows;
+      this.windows = this.windowFactory();
+      for (const { window } of old) {
+        if (!window.isDestroyed()) window.destroy();
+      }
+    } finally {
+      this.rebuilding = false;
+    }
+    if (this.session) {
+      this.session.setDisplayMode(mode);
+      this.navigateAll('reader'); // freshly-created windows pull content via `ready`
+    }
+    // No document open: the new windows already booted to the splash launcher.
+  }
+
+  /** Toggle full-screen on every window and report the new state to the overlay. */
+  private toggleFullScreen(): void {
+    const anchor = this.windows[0]?.window;
+    if (!anchor) return;
+    const next = !anchor.isFullScreen();
+    for (const { window } of this.windows) {
+      if (!window.isDestroyed()) window.setFullScreen(next);
+    }
+    for (const { window } of this.windows) {
+      if (!window.isDestroyed()) window.webContents.send(MainToRenderer.fullScreenChanged, next);
+    }
   }
 
   private persistAndRender(): void {
