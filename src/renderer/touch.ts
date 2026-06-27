@@ -16,6 +16,8 @@ export interface NavCallbacks {
 export interface TouchOptions {
   /** Fraction of width for each side zone (0–0.5). Centre is the remainder. */
   tapZoneWidth: number;
+  /** Fraction of width on each outer edge where taps are ignored (grip safety). */
+  edgeDeadZone: number;
 }
 
 const SWIPE_THRESHOLD_PX = 60;
@@ -52,6 +54,9 @@ export function attachNavigation(
     // Otherwise treat near-stationary release as a tap in a zone.
     if (Math.abs(dx) <= TAP_MOVE_TOLERANCE_PX && Math.abs(dy) <= TAP_MOVE_TOLERANCE_PX) {
       const fraction = e.clientX / el.clientWidth;
+      const edge = opts.edgeDeadZone;
+      // Ignore taps in the outer grip margin so holding the bezel is safe.
+      if (fraction < edge || fraction > 1 - edge) return;
       const side = opts.tapZoneWidth;
       if (fraction < side) cb.onPrev();
       else if (fraction > 1 - side) cb.onNext();

@@ -36,3 +36,29 @@ export function setHardwareBrightness(level: number): Promise<boolean> {
     );
   });
 }
+
+/**
+ * Enable or disable Windows **adaptive** (ambient-sensor) brightness for the
+ * active power scheme, so it stops overriding the user's manual level. No-op off
+ * Windows. Best-effort; failures are logged, not thrown.
+ */
+export function setAdaptiveBrightness(enabled: boolean): Promise<void> {
+  if (process.platform !== 'win32') return Promise.resolve();
+  const value = enabled ? 1 : 0;
+  // Set both AC and DC values then activate the scheme so it takes effect.
+  const cmd =
+    `powercfg -setacvalueindex SCHEME_CURRENT SUB_VIDEO ADAPTBRIGHT ${value}; ` +
+    `powercfg -setdcvalueindex SCHEME_CURRENT SUB_VIDEO ADAPTBRIGHT ${value}; ` +
+    `powercfg -setactive SCHEME_CURRENT`;
+  return new Promise((resolve) => {
+    execFile(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', cmd],
+      { timeout: 5000, windowsHide: true },
+      (err) => {
+        if (err) log('adaptive brightness toggle failed:', err.message);
+        resolve();
+      },
+    );
+  });
+}

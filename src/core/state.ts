@@ -12,6 +12,7 @@
 import {
   BRIGHTNESS_MAX,
   BRIGHTNESS_MIN,
+  EDGE_DEAD_ZONE_MAX,
   DEFAULT_SETTINGS,
   type AppSettings,
   type PersistedState,
@@ -48,6 +49,10 @@ export function normalizeSettings(raw: unknown): AppSettings {
     typeof raw.brightness === 'number'
       ? Math.max(BRIGHTNESS_MIN, Math.min(BRIGHTNESS_MAX, Math.round(raw.brightness)))
       : DEFAULT_SETTINGS.brightness;
+  const edgeDeadZone =
+    typeof raw.edgeDeadZone === 'number' && raw.edgeDeadZone >= 0 && raw.edgeDeadZone <= EDGE_DEAD_ZONE_MAX
+      ? raw.edgeDeadZone
+      : DEFAULT_SETTINGS.edgeDeadZone;
   return {
     rootFolder: typeof raw.rootFolder === 'string' ? raw.rootFolder : null,
     defaultReadingDirection: pickEnum(
@@ -61,7 +66,14 @@ export function normalizeSettings(raw: unknown): AppSettings {
       DEFAULT_SETTINGS.defaultZoomPreset,
     ),
     tapZoneWidth: tapZone,
+    edgeDeadZone,
     brightness,
+    // Defaults to true (the user's chosen behavior) when unset.
+    disableAdaptiveBrightness:
+      typeof raw.disableAdaptiveBrightness === 'boolean'
+        ? raw.disableAdaptiveBrightness
+        : DEFAULT_SETTINGS.disableAdaptiveBrightness,
+    helpShown: raw.helpShown === true,
     animationsEnabled: raw.animationsEnabled === true,
     windowedMode: raw.windowedMode === true,
   };

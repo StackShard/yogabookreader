@@ -44,6 +44,8 @@ export interface RenderInstruction {
   prefetch: RenderTarget[];
   zoomPreset: ZoomPreset;
   spreadIndex: number;
+  /** 0-based page indices shown in the current spread (for progress display). */
+  pages: number[];
 }
 
 /** A recent-files entry as the splash screen consumes it. */
@@ -82,6 +84,8 @@ export const RendererToMain = {
   getSettings: 'r2m:get-settings',
   requestOverlay: 'r2m:request-overlay',
   toggleFullScreen: 'r2m:toggle-full-screen',
+  setAdaptiveBrightnessDisabled: 'r2m:set-adaptive-brightness-disabled',
+  markHelpShown: 'r2m:mark-help-shown',
   quit: 'r2m:quit',
 } as const;
 
@@ -125,6 +129,8 @@ export interface ReaderBridge {
   setSpreadEncoded(value: boolean | undefined): void;
   requestOverlay(): void;
   toggleFullScreen(): void;
+  setAdaptiveBrightnessDisabled(disabled: boolean): void;
+  markHelpShown(): void;
   quit(): void;
 
   getRecentFiles(): Promise<RecentFileView[]>;

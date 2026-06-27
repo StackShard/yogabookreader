@@ -14,7 +14,7 @@ import {
   type ZoomPreset,
 } from '../core/types.js';
 
-const AUTO_HIDE_MS = 3000;
+const AUTO_HIDE_MS = 8000;
 
 export interface OverlayCallbacks {
   onPrev(): void;
@@ -26,38 +26,57 @@ export interface OverlayCallbacks {
   onToggleFullScreen(): void;
   onQuit(): void;
   onSetBrightness(level: number): void;
+  onToggleAdaptive(disabled: boolean): void;
+  onShowHelp(): void;
 }
 
 export class ControlOverlay {
   private readonly root: HTMLElement;
-  private readonly counter: HTMLElement;
+  private readonly progressLabel: HTMLElement;
+  private readonly progressFill: HTMLElement;
   private readonly fullScreenButton: HTMLButtonElement;
+  private readonly adaptiveButton: HTMLButtonElement;
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
   private expanded = false;
+  private hovered = false;
+  private adaptiveDisabled: boolean;
 
   constructor(
     private readonly cb: OverlayCallbacks,
     private readonly initialBrightness: number,
+    initialAdaptiveDisabled: boolean,
   ) {
+    this.adaptiveDisabled = initialAdaptiveDisabled;
     this.root = document.createElement('div');
     this.root.className = 'overlay hidden';
-    this.counter = document.createElement('span');
-    this.counter.className = 'overlay-counter';
+    this.progressLabel = document.createElement('span');
+    this.progressLabel.className = 'overlay-progress-label';
+    this.progressFill = document.createElement('div');
+    this.progressFill.className = 'overlay-progress-fill';
     this.fullScreenButton = this.button('Exit Full-Screen', () => this.cb.onToggleFullScreen());
+    this.adaptiveButton = this.button(this.adaptiveLabel(), () => this.toggleAdaptive());
     this.build();
     document.body.appendChild(this.root);
     this.attachSwipeUp();
+    this.attachHoverPause();
   }
 
   private build(): void {
+    const progress = document.createElement('div');
+    progress.className = 'overlay-progress';
+    const track = document.createElement('div');
+    track.className = 'overlay-progress-track';
+    track.appendChild(this.progressFill);
+    progress.append(this.progressLabel, track);
+
     const minimal = document.createElement('div');
     minimal.className = 'overlay-bar';
     minimal.append(
       this.button('‹', () => this.cb.onPrev()),
       this.button('›', () => this.cb.onNext()),
-      this.counter,
-      this.button('▦', () => this.cb.onOpenLibrary()),
-      this.button('⚙', () => this.toggleExpanded()),
+      this.button('▦ Library', () => this.cb.onOpenLibrary()),
+      this.button('? Help', () => this.cb.onShowHelp()),
+      this.button('⚙ More', () => this.toggleExpanded()),
     );
 
     const expanded = document.createElement('div');
@@ -69,10 +88,21 @@ export class ControlOverlay {
       this.button('LTR / RTL', () => this.cb.onToggleDirection()),
       this.gotoInput(),
       this.brightnessControl(),
+      this.adaptiveButton,
       this.fullScreenButton,
       this.button('Quit', () => this.cb.onQuit()),
     );
-    this.root.append(minimal, expanded);
+    this.root.append(progress, minimal, expanded);
+  }
+
+  private adaptiveLabel(): string {
+    return `Auto-brightness: ${this.adaptiveDisabled ? 'Off' : 'On'}`;
+  }
+
+  private toggleAdaptive(): void {
+    this.adaptiveDisabled = !this.adaptiveDisabled;
+    this.adaptiveButton.textContent = this.adaptiveLabel();
+    this.cb.onToggleAdaptive(this.adaptiveDisabled);
   }
 
   /** Brightness slider with fixed increments (PRD §Settings). */
@@ -138,6 +168,18 @@ export class ControlOverlay {
     });
   }
 
+  /** Keep the bar visible while the pointer is over it (don't auto-hide). */
+  private attachHoverPause(): void {
+    this.root.addEventListener('pointerenter', () => {
+      this.hovered = true;
+      if (this.hideTimer) clearTimeout(this.hideTimer);
+    });
+    this.root.addEventListener('pointerleave', () => {
+      this.hovered = false;
+      this.poke();
+    });
+  }
+
   private toggleExpanded(): void {
     this.setExpanded(!this.expanded);
   }
@@ -164,13 +206,24 @@ export class ControlOverlay {
     this.root.classList.toggle('expanded', value);
   }
 
-  /** Reset the inactivity timer that auto-hides the overlay after 3s. */
+  /** Reset the inactivity timer that auto-hides the overlay (paused while hovered/expanded). */
   private poke(): void {
     if (this.hideTimer) clearTimeout(this.hideTimer);
+    if (this.hovered || this.expanded) return;
     this.hideTimer = setTimeout(() => this.hide(), AUTO_HIDE_MS);
   }
 
-  setCounter(spreadIndex: number, spreadCount: number): void {
-    this.counter.textContent = `${spreadIndex + 1} / ${spreadCount}`;
+  /** Update the page progress label and bar from the current spread's pages. */
+  setProgress(pages: number[], totalPages: number): void {
+    if (pages.length === 0 || totalPages <= 0) {
+      this.progressLabel.textContent = '';
+      this.progressFill.style.width = '0%';
+      return;
+    }
+    const first = Math.min(...pages) + 1;
+    const last = Math.max(...pages) + 1;
+    this.progressLabel.textContent =
+      first === last ? `Page ${first} of ${totalPages}` : `Pages ${first}–${last} of ${totalPages}`;
+    this.progressFill.style.width = `${Math.round((last / totalPages) * 100)}%`;
   }
 }

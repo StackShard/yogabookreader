@@ -95,8 +95,14 @@ export interface AppSettings {
   defaultZoomPreset: ZoomPreset;
   /** Fraction (0-0.5) of screen width for each side tap zone. Default 0.4. */
   tapZoneWidth: number;
+  /** Fraction (0-0.25) of screen width on each edge where taps are ignored. */
+  edgeDeadZone: number;
   /** Screen brightness, 10–100. Applied to hardware backlight (or dim fallback). */
   brightness: number;
+  /** Disable Windows adaptive (ambient) brightness while reading; restore on exit. */
+  disableAdaptiveBrightness: boolean;
+  /** Whether the tap-zone help overlay has been shown once. */
+  helpShown: boolean;
   /** v2 page-curl animation toggle. Off in v1. */
   animationsEnabled: boolean;
   windowedMode: boolean;
@@ -116,7 +122,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultReadingDirection: 'ltr',
   defaultZoomPreset: 'fit-height', // PRD US#14: Fit-Height is the default.
   tapZoneWidth: 0.4, // PRD §Touch Navigation: 40% side zones, 20% center.
+  edgeDeadZone: 0.07, // outer grip margin on each side, ignored for taps.
   brightness: 100,
+  disableAdaptiveBrightness: true,
+  helpShown: false,
   animationsEnabled: false,
   windowedMode: false,
 };
@@ -125,3 +134,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
 export const BRIGHTNESS_MIN = 10;
 export const BRIGHTNESS_MAX = 100;
 export const BRIGHTNESS_STEP = 10;
+
+/** Max fraction allowed for the edge dead-zone on each side. */
+export const EDGE_DEAD_ZONE_MAX = 0.25;

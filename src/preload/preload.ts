@@ -47,6 +47,9 @@ const bridge: ReaderBridge = {
     ipcRenderer.send(RendererToMain.setSpreadEncoded, value),
   requestOverlay: () => ipcRenderer.send(RendererToMain.requestOverlay),
   toggleFullScreen: () => ipcRenderer.send(RendererToMain.toggleFullScreen),
+  setAdaptiveBrightnessDisabled: (disabled: boolean) =>
+    ipcRenderer.send(RendererToMain.setAdaptiveBrightnessDisabled, disabled),
+  markHelpShown: () => ipcRenderer.send(RendererToMain.markHelpShown),
   quit: () => ipcRenderer.send(RendererToMain.quit),
 
   getRecentFiles: (): Promise<RecentFileView[]> =>
