@@ -99,19 +99,22 @@ body {
 /* ---- Control overlay (right window only) ---- */
 .overlay {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 16px;
+  right: 16px;
+  /* Lifted off the bottom edge so taps don't summon the Windows taskbar. */
+  bottom: calc(32px + env(safe-area-inset-bottom, 0px));
   background: var(--panel);
   backdrop-filter: blur(14px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   transition: transform 0.22s ease, opacity 0.22s ease;
-  padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+  padding: 16px 20px;
   z-index: 100; /* above the dim layer so controls stay visible/usable */
 }
 
 .overlay.hidden {
-  transform: translateY(115%);
+  transform: translateY(140%);
   opacity: 0;
   pointer-events: none;
 }
@@ -151,22 +154,55 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
+.overlay-btn {
+  min-width: 120px;
+}
+
+.overlay-btn-nav {
+  min-width: 150px;
+  background: var(--accent);
+  color: #fff;
+}
+.overlay-btn-nav:active {
+  background: var(--accent-press);
+}
+
+/* Expanded drawer: a vertical stack of labelled sections. */
 .overlay-expanded {
   display: none;
-  flex-wrap: wrap;
-  gap: 14px;
-  justify-content: center;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .overlay.expanded .overlay-expanded {
   display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.overlay-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.overlay-row-label {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.overlay-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
 }
 
 .overlay-goto {
@@ -319,10 +355,27 @@ body {
 .splash-actionbar {
   display: flex;
   gap: 14px;
-  padding: 16px 24px calc(20px + env(safe-area-inset-bottom, 0px));
+  /* Lifted off the very bottom so edge taps don't summon the Windows taskbar. */
+  padding: 16px 24px calc(32px + env(safe-area-inset-bottom, 0px));
   background: var(--panel);
   backdrop-filter: blur(14px);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.library-folder {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 12px;
+  word-break: break-all;
+}
+
+.group-heading {
+  margin: 22px 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--fg);
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
 }
 
 .splash-actionbar .primary-btn {
@@ -349,6 +402,7 @@ body {
   cursor: pointer;
   text-align: left;
   padding: 0;
+  min-width: 0; /* allow the title to clip instead of overrunning neighbours */
 }
 
 .tile-cover {
@@ -381,9 +435,13 @@ body {
 
 .tile-name {
   font-size: 15px;
-  white-space: nowrap;
+  min-width: 0;
+  /* Wrap to at most two lines instead of bleeding into the next column. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .tile-sub {

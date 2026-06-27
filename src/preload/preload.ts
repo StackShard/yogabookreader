@@ -59,7 +59,12 @@ const bridge: ReaderBridge = {
     ipcRenderer.invoke(RendererToMain.getRecentFiles),
   getSettings: () => ipcRenderer.invoke(RendererToMain.getSettings),
   getLibrary: () => ipcRenderer.invoke(RendererToMain.getLibrary),
+  pickFolder: () => ipcRenderer.invoke(RendererToMain.pickFolder),
   getResumeInfo: () => ipcRenderer.invoke(RendererToMain.getResumeInfo),
+  getCachedCover: (filePath: string) => ipcRenderer.invoke(RendererToMain.getCachedCover, filePath),
+  getCoverSource: (filePath: string) => ipcRenderer.invoke(RendererToMain.getCoverSource, filePath),
+  saveCover: (filePath: string, dataUrl: string) =>
+    ipcRenderer.invoke(RendererToMain.saveCover, filePath, dataUrl),
 };
 
 contextBridge.exposeInMainWorld('reader', bridge);

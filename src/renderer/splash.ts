@@ -1,18 +1,17 @@
 /**
  * Splash / library screen (PRD §File Management, US#17/#18).
  *
- * Shows recent files and the scanned library and lets the user open a document,
- * resume the currently-open one, or exit the app. It is role-aware: in dual mode
- * only the primary screen shows the gallery; the secondary shows a short hint so
- * the library isn't jarringly mirrored across both panels.
+ * Shows recent files and the scanned library (grouped by sub-folder), and lets
+ * the user open a document, choose the library folder, resume the open one, or
+ * exit. Role-aware: in dual mode only the primary screen shows the gallery.
  */
 
 import {
   renderGallery,
+  renderLibrary,
   recentToGalleryItem,
-  libraryToGalleryItem,
 } from './library.js';
-import type { WindowRole } from '../shared/ipc.js';
+import type { LibraryGroup, WindowRole } from '../shared/ipc.js';
 
 function readRole(): WindowRole {
   const role = new URLSearchParams(location.search).get('role');
@@ -36,11 +35,23 @@ async function main(): Promise<void> {
     return;
   }
 
+  const libraryEl = document.getElementById('library') as HTMLElement;
+  const folderEl = document.getElementById('library-folder') as HTMLElement;
+
+  async function refreshLibrary(groups?: LibraryGroup[]): Promise<void> {
+    const data = groups ?? (await reader.getLibrary().catch(() => []));
+    const settings = await reader.getSettings().catch(() => null);
+    folderEl.textContent = settings?.rootFolder ? settings.rootFolder : 'No folder selected.';
+    renderLibrary(libraryEl, data, openDocument);
+  }
+
   document.getElementById('open-file')?.addEventListener('click', () => reader.pickFile());
   document.getElementById('exit')?.addEventListener('click', () => reader.quit());
+  document.getElementById('choose-folder')?.addEventListener('click', () => {
+    void reader.pickFolder().then((groups) => refreshLibrary(groups));
+  });
 
-  // Offer "Resume reading" when a document is already open (e.g. library opened
-  // by accident).
+  // Offer "Resume reading" when a document is already open.
   const resumeBtn = document.getElementById('resume') as HTMLButtonElement | null;
   const resumeInfo = await reader.getResumeInfo().catch(() => null);
   if (resumeBtn && resumeInfo) {
@@ -49,21 +60,13 @@ async function main(): Promise<void> {
     resumeBtn.addEventListener('click', () => reader.resume());
   }
 
-  const [recent, library] = await Promise.all([
-    reader.getRecentFiles().catch(() => []),
-    reader.getLibrary().catch(() => []),
-  ]);
-
+  const recent = await reader.getRecentFiles().catch(() => []);
   renderGallery(
     document.getElementById('recent') as HTMLElement,
     recent.map(recentToGalleryItem),
     openDocument,
   );
-  renderGallery(
-    document.getElementById('library') as HTMLElement,
-    library.map(libraryToGalleryItem),
-    openDocument,
-  );
+  await refreshLibrary();
 }
 
 void main();

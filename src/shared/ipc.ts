@@ -73,6 +73,10 @@ export const RendererToMain = {
   resume: 'r2m:resume',
   getResumeInfo: 'r2m:get-resume-info',
   getLibrary: 'r2m:get-library',
+  pickFolder: 'r2m:pick-folder',
+  getCachedCover: 'r2m:get-cached-cover',
+  getCoverSource: 'r2m:get-cover-source',
+  saveCover: 'r2m:save-cover',
   setBrightness: 'r2m:set-brightness',
   next: 'r2m:next',
   prev: 'r2m:prev',
@@ -141,8 +145,12 @@ export interface ReaderBridge {
 
   getRecentFiles(): Promise<RecentFileView[]>;
   getSettings(): Promise<AppSettings>;
-  getLibrary(): Promise<LibraryItemView[]>;
+  getLibrary(): Promise<LibraryGroup[]>;
+  pickFolder(): Promise<LibraryGroup[]>;
   getResumeInfo(): Promise<ResumeInfo | null>;
+  getCachedCover(filePath: string): Promise<string | null>;
+  getCoverSource(filePath: string): Promise<CoverSource | null>;
+  saveCover(filePath: string, dataUrl: string): Promise<string | null>;
 }
 
 /** A library catalogue entry as the gallery consumes it. */
@@ -150,6 +158,19 @@ export interface LibraryItemView {
   filePath: string;
   displayName: string;
   type: DocumentType;
+}
+
+/** A sub-folder's worth of library items (one section in the gallery). */
+export interface LibraryGroup {
+  folder: string;
+  items: LibraryItemView[];
+}
+
+/** Source the renderer needs to render a cover thumbnail. */
+export interface CoverSource {
+  kind: 'pdf' | 'image';
+  /** yreader:// URL to the PDF file or the first comic image. */
+  url: string;
 }
 
 /** The currently-open document, for the splash "Resume reading" button. */
