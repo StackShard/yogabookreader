@@ -98,7 +98,9 @@ export class ControlOverlay {
       this.row(this.brightnessControl(), this.adaptiveButton),
       this.row(this.fullScreenButton, this.button('Quit', () => this.cb.onQuit())),
     );
-    this.root.append(progress, minimal, expanded);
+    // Order matters: the minimal bar is last so it stays pinned to the bottom
+    // edge; the drawer expands upward above it, keeping the buttons in place.
+    this.root.append(progress, expanded, minimal);
   }
 
   private adaptiveLabel(): string {

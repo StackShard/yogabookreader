@@ -118,14 +118,18 @@ export class ReaderController {
     ipcMain.on(RendererToMain.setAdaptiveBrightnessDisabled, (_e, disabled: boolean) => {
       void this.setAdaptiveBrightnessDisabled(disabled);
     });
-    ipcMain.on(RendererToMain.markHelpShown, () => {
+    ipcMain.on(RendererToMain.requestHelp, () => this.broadcast(MainToRenderer.showHelp));
+    ipcMain.on(RendererToMain.dismissHelp, () => {
       updateSettings({ helpShown: true });
+      this.broadcast(MainToRenderer.hideHelp);
     });
-    ipcMain.on(RendererToMain.requestHelp, () => {
-      for (const { window } of this.windows) {
-        if (!window.isDestroyed()) window.webContents.send(MainToRenderer.showHelp);
-      }
-    });
+  }
+
+  /** Send a no-payload message to every live window. */
+  private broadcast(channel: string): void {
+    for (const { window } of this.windows) {
+      if (!window.isDestroyed()) window.webContents.send(channel);
+    }
   }
 
   /** The open document for the splash "Resume reading" button, if any. */

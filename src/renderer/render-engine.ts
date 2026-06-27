@@ -21,9 +21,12 @@ type Source = CanvasImageSource & { width: number; height: number };
 
 /** Max decoded comic images kept in memory at once (current ± neighbours). */
 const IMAGE_CACHE_CAP = 16;
+/** Max pre-rasterized PDF page canvases kept (current ± neighbours per window). */
+const PDF_PAGE_CACHE_CAP = 8;
 
 const pdfDocs = new Map<string, Promise<pdfjsLib.PDFDocumentProxy>>();
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
+const pdfPageCache = new Map<string, Promise<Source>>();
 
 /** A drawable source plus the half-crop to apply when painting it. */
 export interface ResolvedSource {
@@ -81,13 +84,14 @@ function getImage(imagePath: string): Promise<HTMLImageElement> {
   return img;
 }
 
-/** Release all cached PDFs/images. Call when switching documents. */
+/** Release all cached PDFs/images/rendered pages. Call when switching documents. */
 export function resetCaches(): void {
   for (const docPromise of pdfDocs.values()) {
     docPromise.then((d) => d.destroy()).catch(() => undefined);
   }
   pdfDocs.clear();
   imageCache.clear();
+  pdfPageCache.clear();
 }
 
 function fileUrl(p: string): string {
@@ -162,6 +166,27 @@ async function renderPdfToSource(filePath: string, pageIndex: number, targetHeig
 }
 
 /**
+ * Cached PDF page rasterization keyed by file/page/height, so neighbouring pages
+ * warmed by {@link prefetch} make the next turn instant. Bounded LRU; a failed
+ * render is evicted so it can be retried.
+ */
+function getRenderedPdf(filePath: string, pageIndex: number, targetHeight: number): Promise<Source> {
+  const key = `${filePath}#${pageIndex}@${targetHeight}`;
+  const cached = pdfPageCache.get(key);
+  if (cached) {
+    touch(pdfPageCache, key);
+    return cached;
+  }
+  const rendered = renderPdfToSource(filePath, pageIndex, targetHeight).catch((err) => {
+    pdfPageCache.delete(key);
+    throw err;
+  });
+  pdfPageCache.set(key, rendered);
+  evict(pdfPageCache, PDF_PAGE_CACHE_CAP);
+  return rendered;
+}
+
+/**
  * Resolve a render target to a drawable source. Returns null for blank slots.
  * Does not touch the visible canvas, so the caller can discard a stale result.
  */
@@ -171,17 +196,20 @@ export async function resolveTarget(
 ): Promise<ResolvedSource | null> {
   if (target.kind === 'blank') return null;
   if (target.kind === 'pdf') {
-    const source = await renderPdfToSource(target.filePath, target.pageIndex, targetHeight);
+    const source = await getRenderedPdf(target.filePath, target.pageIndex, targetHeight);
     return { source, half: target.half };
   }
   const img = await getImage(target.imagePath);
   return { source: img as unknown as Source, half: target.half };
 }
 
-/** Warm the cache for upcoming targets so page turns are instant (pre-render). */
-export function prefetch(targets: RenderTarget[]): void {
+/**
+ * Warm the cache for upcoming targets so page turns are instant. PDF pages are
+ * pre-rasterized at the given canvas height; comic images are pre-decoded.
+ */
+export function prefetch(targets: RenderTarget[], targetHeight: number): void {
   for (const t of targets) {
-    if (t.kind === 'pdf') void getPdf(t.filePath);
+    if (t.kind === 'pdf') void getRenderedPdf(t.filePath, t.pageIndex, targetHeight).catch(() => undefined);
     else if (t.kind === 'image') void getImage(t.imagePath);
   }
 }
