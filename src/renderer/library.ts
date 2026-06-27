@@ -14,7 +14,9 @@ export interface GalleryItem {
 }
 
 function fileUrl(p: string): string {
-  return 'file://' + encodeURI(p.replace(/\\/g, '/'));
+  const norm = p.replace(/\\/g, '/');
+  const withSlash = norm.startsWith('/') ? norm : '/' + norm;
+  return 'file://' + encodeURI(withSlash);
 }
 
 function tile(item: GalleryItem, onOpen: (filePath: string) => void): HTMLElement {

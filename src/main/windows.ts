@@ -11,6 +11,7 @@ import path from 'node:path';
 import { BrowserWindow, screen } from 'electron';
 import { assignDisplays, type DisplayInfo, type Placement } from '../core/placement.js';
 import type { WindowRole } from '../shared/ipc.js';
+import { log } from './log.js';
 
 export interface ReaderWindow {
   role: WindowRole;
@@ -35,9 +36,13 @@ export function loadPage(win: BrowserWindow, role: WindowRole, page: ReaderPage)
   const file = page === 'splash' ? 'splash.html' : 'index.html';
   const devUrl = process.env['ELECTRON_RENDERER_URL'];
   if (devUrl) {
-    void win.loadURL(`${devUrl}/${file}?role=${role}`);
+    const url = `${devUrl}/${file}?role=${role}`;
+    log('loadPage:', role, '->', url);
+    void win.loadURL(url);
   } else {
-    void win.loadFile(path.join(__dirname, `../renderer/${file}`), { query: { role } });
+    const filePath = path.join(__dirname, `../renderer/${file}`);
+    log('loadPage:', role, '->', filePath, `(role=${role})`);
+    void win.loadFile(filePath, { query: { role } });
   }
 }
 
@@ -62,6 +67,18 @@ function createWindow(role: WindowRole, bounds: DisplayInfo['bounds'], windowed:
       sandbox: false,
     },
   });
+  // Surface renderer console output and load failures in the terminal to aid
+  // diagnosis on the device.
+  win.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    log('did-fail-load:', role, code, desc, url);
+  });
+  win.webContents.on('console-message', (_e, level, message, line, source) => {
+    log(`renderer[${role}] ${source}:${line}: ${message}`, `(level ${level})`);
+  });
+  win.webContents.on('render-process-gone', (_e, details) => {
+    log('render-process-gone:', role, details.reason);
+  });
+
   // Boot into the splash/library launcher so there is an obvious entry point;
   // the main process navigates windows to the reader when a document opens.
   loadPage(win, role, 'splash');
@@ -74,6 +91,7 @@ function createWindow(role: WindowRole, bounds: DisplayInfo['bounds'], windowed:
  */
 export function createReaderWindows(windowed = false): ReaderWindow[] {
   const placement = currentPlacement();
+  log('placement mode =', placement.mode, '- displays:', screen.getAllDisplays().length);
 
   if (placement.mode === 'dual') {
     return [

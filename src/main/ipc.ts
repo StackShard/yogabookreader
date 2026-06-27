@@ -25,6 +25,7 @@ import { loadPdfMeta } from './pdf-meta.js';
 import { ReaderSession } from './session.js';
 import { scanFolder } from './library-scanner.js';
 import { currentPlacement, loadPage, type ReaderPage, type ReaderWindow } from './windows.js';
+import { log, logError } from './log.js';
 import {
   getFileState,
   getRecentFiles,
@@ -87,7 +88,7 @@ export class ReaderController {
     ipcMain.handle(RendererToMain.getSettings, () => getSettings());
     ipcMain.handle(RendererToMain.getLibrary, () => this.getLibrary());
     ipcMain.on(RendererToMain.pickFile, () => {
-      void this.pickFile();
+      this.pickFile().catch((e) => logError('pickFile failed:', e));
     });
   }
 
@@ -107,6 +108,7 @@ export class ReaderController {
       properties: ['openFile'],
       filters: [{ name: 'Documents', extensions: ['pdf', 'cbz', 'cbr'] }],
     });
+    log('pickFile: canceled =', result.canceled, 'path =', result.filePaths[0]);
     if (!result.canceled && result.filePaths[0]) {
       await this.openDocument(result.filePaths[0]);
     }
@@ -114,6 +116,7 @@ export class ReaderController {
 
   /** Navigate every window to the splash launcher or the reader page. */
   private navigateAll(page: ReaderPage): void {
+    log('navigateAll ->', page, '(', this.windows.length, 'window(s) )');
     for (const { role, window } of this.windows) {
       if (!window.isDestroyed()) loadPage(window, role, page);
     }
@@ -130,6 +133,7 @@ export class ReaderController {
   private onRendererReady(sender: Electron.WebContents): void {
     const win = this.windows.find((w) => w.window.webContents === sender);
     if (!win || win.window.isDestroyed()) return;
+    log('ready from', win.role, '- session:', !!this.session, 'pendingError:', !!this.pendingError);
     if (this.session) {
       win.window.webContents.send(MainToRenderer.documentLoaded, this.session.describe());
       win.window.webContents.send(MainToRenderer.render, this.session.instructionFor(win.role));
@@ -139,6 +143,7 @@ export class ReaderController {
   }
 
   private failOpen(error: ReaderError): void {
+    logError('failOpen:', error.reason, '-', error.message);
     this.session = null;
     this.pendingError = error;
     this.navigateAll('reader'); // reader page hosts the error UI
@@ -147,6 +152,7 @@ export class ReaderController {
   /** Open a document, building a session and broadcasting it to all windows. */
   async openDocument(filePath: string): Promise<void> {
     const type = detectType(filePath);
+    log('openDocument:', filePath, 'type =', type);
     if (!type) {
       this.failOpen({
         filePath,
@@ -205,9 +211,11 @@ export class ReaderController {
     }
 
     this.pendingError = null;
+    const desc = this.session.describe();
+    log('loaded ok:', desc.totalPages, 'pages,', desc.spreadCount, 'spreads, mode =', displayMode);
     recordRecentFile({
       filePath,
-      displayName: this.session.describe().displayName,
+      displayName: desc.displayName,
       lastPage: this.session.anchorPage,
       lastReadAt: Date.now(),
     });
