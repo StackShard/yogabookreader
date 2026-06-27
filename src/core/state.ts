@@ -10,6 +10,8 @@
  */
 
 import {
+  BRIGHTNESS_MAX,
+  BRIGHTNESS_MIN,
   DEFAULT_SETTINGS,
   type AppSettings,
   type PersistedState,
@@ -42,6 +44,10 @@ export function normalizeSettings(raw: unknown): AppSettings {
     typeof raw.tapZoneWidth === 'number' && raw.tapZoneWidth > 0 && raw.tapZoneWidth <= 0.5
       ? raw.tapZoneWidth
       : DEFAULT_SETTINGS.tapZoneWidth;
+  const brightness =
+    typeof raw.brightness === 'number'
+      ? Math.max(BRIGHTNESS_MIN, Math.min(BRIGHTNESS_MAX, Math.round(raw.brightness)))
+      : DEFAULT_SETTINGS.brightness;
   return {
     rootFolder: typeof raw.rootFolder === 'string' ? raw.rootFolder : null,
     defaultReadingDirection: pickEnum(
@@ -55,6 +61,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
       DEFAULT_SETTINGS.defaultZoomPreset,
     ),
     tapZoneWidth: tapZone,
+    brightness,
     animationsEnabled: raw.animationsEnabled === true,
     windowedMode: raw.windowedMode === true,
   };

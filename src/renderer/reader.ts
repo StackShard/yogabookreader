@@ -9,8 +9,9 @@ import { resolveTarget, paintSource, clearCanvas, prefetch, resetCaches } from '
 import { attachNavigation } from './touch.js';
 import { ControlOverlay } from './overlay.js';
 import { showError } from './error.js';
-import type { WindowRole } from '../shared/ipc.js';
+import type { RenderInstruction, WindowRole } from '../shared/ipc.js';
 import { DEFAULT_SETTINGS } from '../core/types.js';
+import type { ResolvedSource } from './render-engine.js';
 
 function readRole(): WindowRole {
   const role = new URLSearchParams(location.search).get('role');
@@ -37,22 +38,31 @@ async function main(): Promise<void> {
   // over a newer one during rapid page turns.
   let renderSeq = 0;
 
+  // App-level brightness dim layer (fallback when hardware control is unavailable).
+  const dimLayer = document.createElement('div');
+  dimLayer.className = 'dim-layer';
+  document.body.appendChild(dimLayer);
+
+  const settings = await reader.getSettings().catch(() => DEFAULT_SETTINGS);
+
   // The overlay lives only in the right window (or the single-window fallback).
   const overlay =
     role === 'left'
       ? null
-      : new ControlOverlay({
-          onPrev: () => reader.prev(),
-          onNext: () => reader.next(),
-          onJump: (p) => reader.jumpToPage(p),
-          onToggleDirection: () => reader.toggleDirection(),
-          onSetZoom: (preset) => reader.setZoomPreset(preset),
-          onOpenLibrary: () => reader.openLibrary(),
-          onToggleFullScreen: () => reader.toggleFullScreen(),
-          onQuit: () => reader.quit(),
-        });
-
-  const settings = await reader.getSettings().catch(() => DEFAULT_SETTINGS);
+      : new ControlOverlay(
+          {
+            onPrev: () => reader.prev(),
+            onNext: () => reader.next(),
+            onJump: (p) => reader.jumpToPage(p),
+            onToggleDirection: () => reader.toggleDirection(),
+            onSetZoom: (preset) => reader.setZoomPreset(preset),
+            onOpenLibrary: () => reader.openLibrary(),
+            onToggleFullScreen: () => reader.toggleFullScreen(),
+            onQuit: () => reader.quit(),
+            onSetBrightness: (level) => reader.setBrightness(level),
+          },
+          settings.brightness,
+        );
 
   attachNavigation(
     stage,
@@ -76,28 +86,60 @@ async function main(): Promise<void> {
     currentFilePath = info.filePath;
   });
 
+  // Resolve with a couple of retries so a transient decode/IPC hiccup on one
+  // screen doesn't leave it stuck on the previous page (two-window desync).
+  async function resolveWithRetry(
+    instruction: RenderInstruction,
+    attempts = 3,
+  ): Promise<ResolvedSource | null> {
+    let lastErr: unknown;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await resolveTarget(instruction.current, canvas.height);
+      } catch (err) {
+        lastErr = err;
+        await new Promise((r) => setTimeout(r, 120 * (i + 1)));
+      }
+    }
+    throw lastErr;
+  }
+
   reader.onRender((instruction) => {
     zoomPreset = instruction.zoomPreset;
     overlay?.setCounter(instruction.spreadIndex, spreadCount);
     prefetch(instruction.prefetch);
     const token = ++renderSeq;
-    resolveTarget(instruction.current, canvas.height)
+    resolveWithRetry(instruction)
       .then((resolved) => {
         if (token !== renderSeq) return; // a newer render superseded this one
         if (resolved) paintSource(canvas, resolved, zoomPreset);
         else clearCanvas(canvas);
       })
-      .catch((err) => console.error('render failed:', err));
+      .catch((err) => {
+        console.error('render failed, re-syncing:', err);
+        // Pull the authoritative current spread again so the screens re-align.
+        if (token === renderSeq) reader.ready();
+      });
   });
 
   reader.onShowError((error) => showError(stage, error));
   reader.onShowOverlay(() => overlay?.show());
   reader.onFullScreenChanged((isFs) => overlay?.setFullScreenState(isFs));
+  reader.onSetDim((level) => {
+    dimLayer.style.opacity = level === null ? '0' : String((100 - level) / 100);
+  });
 
   // Keyboard: Escape toggles full-screen, Ctrl+Q quits.
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') reader.toggleFullScreen();
     else if (e.key.toLowerCase() === 'q' && (e.ctrlKey || e.metaKey)) reader.quit();
+  });
+
+  // Re-sync this window's spread whenever it regains focus/visibility, healing
+  // any drift between the two screens.
+  window.addEventListener('focus', () => reader.ready());
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) reader.ready();
   });
 
   window.addEventListener('resize', () => {

@@ -38,6 +38,7 @@ app.whenReady().then(async () => {
 
   controller.registerHandlers();
   bootWindows();
+  controller.applyStoredBrightness();
 
   // Survive docking/undocking and posture changes: re-evaluate the layout.
   screen.on('display-added', () => controller.relayout());

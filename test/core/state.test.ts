@@ -41,6 +41,16 @@ describe('normalizeSettings', () => {
     expect(s.defaultZoomPreset).toBe('fit-height');
     expect(s.tapZoneWidth).toBe(DEFAULT_SETTINGS.tapZoneWidth);
   });
+
+  it('clamps brightness into 10–100 and defaults when missing/invalid', () => {
+    expect(normalizeSettings({ brightness: 50 }).brightness).toBe(50);
+    expect(normalizeSettings({ brightness: 5 }).brightness).toBe(10);
+    expect(normalizeSettings({ brightness: 500 }).brightness).toBe(100);
+    expect(normalizeSettings({ brightness: 'bright' }).brightness).toBe(
+      DEFAULT_SETTINGS.brightness,
+    );
+    expect(normalizeSettings({}).brightness).toBe(DEFAULT_SETTINGS.brightness);
+  });
 });
 
 describe('deserialize', () => {

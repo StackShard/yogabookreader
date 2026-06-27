@@ -29,11 +29,15 @@ const bridge: ReaderBridge = {
   onShowOverlay: (cb: () => void) => ipcRenderer.on(MainToRenderer.showOverlay, () => cb()),
   onFullScreenChanged: (cb: (isFullScreen: boolean) => void) =>
     ipcRenderer.on(MainToRenderer.fullScreenChanged, (_e, value: boolean) => cb(value)),
+  onSetDim: (cb: (level: number | null) => void) =>
+    ipcRenderer.on(MainToRenderer.setDim, (_e, level: number | null) => cb(level)),
 
   ready: () => ipcRenderer.send(RendererToMain.ready),
   openFile: (filePath: string) => ipcRenderer.send(RendererToMain.openFile, filePath),
   pickFile: () => ipcRenderer.send(RendererToMain.pickFile),
   openLibrary: () => ipcRenderer.send(RendererToMain.openLibrary),
+  resume: () => ipcRenderer.send(RendererToMain.resume),
+  setBrightness: (level: number) => ipcRenderer.send(RendererToMain.setBrightness, level),
   next: () => ipcRenderer.send(RendererToMain.next),
   prev: () => ipcRenderer.send(RendererToMain.prev),
   jumpToPage: (pageIndex: number) => ipcRenderer.send(RendererToMain.jumpToPage, pageIndex),
@@ -49,6 +53,7 @@ const bridge: ReaderBridge = {
     ipcRenderer.invoke(RendererToMain.getRecentFiles),
   getSettings: () => ipcRenderer.invoke(RendererToMain.getSettings),
   getLibrary: () => ipcRenderer.invoke(RendererToMain.getLibrary),
+  getResumeInfo: () => ipcRenderer.invoke(RendererToMain.getResumeInfo),
 };
 
 contextBridge.exposeInMainWorld('reader', bridge);

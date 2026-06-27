@@ -36,6 +36,17 @@ body {
   display: block;
 }
 
+/* App-level brightness dimming (fallback when hardware control isn't available). */
+.dim-layer {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 50;
+}
+
 /* ---- Control overlay (right window only) ---- */
 .overlay {
   position: fixed;
@@ -46,6 +57,7 @@ body {
   backdrop-filter: blur(8px);
   transition: transform 0.2s ease, opacity 0.2s ease;
   padding: 12px;
+  z-index: 100; /* above the dim layer so controls stay visible/usable */
 }
 
 .overlay.hidden {
@@ -105,6 +117,18 @@ body {
   color: var(--fg);
 }
 
+.overlay-brightness {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+}
+
+.overlay-brightness input[type='range'] {
+  width: 180px;
+  height: 36px;
+}
+
 /* ---- Error page ---- */
 .error-panel {
   position: fixed;
@@ -139,6 +163,35 @@ body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
+  gap: 16px;
+}
+
+.splash-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ghost-btn {
+  font-size: 16px;
+  padding: 12px 20px;
+  border: 1px solid #3a3a3e;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.secondary-view {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10%;
+  opacity: 0.6;
+  font-size: 20px;
 }
 
 .splash h2 {

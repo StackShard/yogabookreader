@@ -95,6 +95,8 @@ export interface AppSettings {
   defaultZoomPreset: ZoomPreset;
   /** Fraction (0-0.5) of screen width for each side tap zone. Default 0.4. */
   tapZoneWidth: number;
+  /** Screen brightness, 10–100. Applied to hardware backlight (or dim fallback). */
+  brightness: number;
   /** v2 page-curl animation toggle. Off in v1. */
   animationsEnabled: boolean;
   windowedMode: boolean;
@@ -114,6 +116,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultReadingDirection: 'ltr',
   defaultZoomPreset: 'fit-height', // PRD US#14: Fit-Height is the default.
   tapZoneWidth: 0.4, // PRD §Touch Navigation: 40% side zones, 20% center.
+  brightness: 100,
   animationsEnabled: false,
   windowedMode: false,
 };
+
+/** Brightness slider bounds and step (granular but fixed increments). */
+export const BRIGHTNESS_MIN = 10;
+export const BRIGHTNESS_MAX = 100;
+export const BRIGHTNESS_STEP = 10;

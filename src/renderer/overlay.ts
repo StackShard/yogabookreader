@@ -7,7 +7,12 @@
  * auto-hides after 3 seconds of inactivity.
  */
 
-import type { ZoomPreset } from '../core/types.js';
+import {
+  BRIGHTNESS_MAX,
+  BRIGHTNESS_MIN,
+  BRIGHTNESS_STEP,
+  type ZoomPreset,
+} from '../core/types.js';
 
 const AUTO_HIDE_MS = 3000;
 
@@ -20,6 +25,7 @@ export interface OverlayCallbacks {
   onOpenLibrary(): void;
   onToggleFullScreen(): void;
   onQuit(): void;
+  onSetBrightness(level: number): void;
 }
 
 export class ControlOverlay {
@@ -29,7 +35,10 @@ export class ControlOverlay {
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
   private expanded = false;
 
-  constructor(private readonly cb: OverlayCallbacks) {
+  constructor(
+    private readonly cb: OverlayCallbacks,
+    private readonly initialBrightness: number,
+  ) {
     this.root = document.createElement('div');
     this.root.className = 'overlay hidden';
     this.counter = document.createElement('span');
@@ -59,10 +68,31 @@ export class ControlOverlay {
       this.button('Full Bleed', () => this.cb.onSetZoom('full-bleed')),
       this.button('LTR / RTL', () => this.cb.onToggleDirection()),
       this.gotoInput(),
+      this.brightnessControl(),
       this.fullScreenButton,
       this.button('Quit', () => this.cb.onQuit()),
     );
     this.root.append(minimal, expanded);
+  }
+
+  /** Brightness slider with fixed increments (PRD §Settings). */
+  private brightnessControl(): HTMLElement {
+    const wrap = document.createElement('label');
+    wrap.className = 'overlay-brightness';
+    const label = document.createElement('span');
+    label.textContent = '☀';
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = String(BRIGHTNESS_MIN);
+    slider.max = String(BRIGHTNESS_MAX);
+    slider.step = String(BRIGHTNESS_STEP);
+    slider.value = String(this.initialBrightness);
+    slider.addEventListener('input', () => {
+      this.cb.onSetBrightness(Number(slider.value));
+      this.poke();
+    });
+    wrap.append(label, slider);
+    return wrap;
   }
 
   /** Reflect the current full-screen state on the toggle button's label. */
