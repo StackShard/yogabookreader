@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>Yoga Book Reader</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <!-- One screen of the two-page spread. The stage captures touch zones; the
+         canvas paints the page; the overlay (right window only) is injected by JS. -->
+    <div id="stage" class="stage">
+      <canvas id="page" class="page"></canvas>
+    </div>
+    <script type="module" src="./reader.ts"></script>
+  </body>
+</html>

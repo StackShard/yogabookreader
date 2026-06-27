@@ -1,0 +1,90 @@
+/**
+ * Reader window entry point. Wires the main-process render stream to the canvas,
+ * touch navigation, the control overlay (right/single window only) and the error
+ * page. The window learns its role (left/right/single) from the URL query set by
+ * the main process when the window was created.
+ */
+
+import { renderTarget, prefetch } from './render-engine.js';
+import { attachNavigation } from './touch.js';
+import { ControlOverlay } from './overlay.js';
+import { showError } from './error.js';
+import type { WindowRole } from '../shared/ipc.js';
+import { DEFAULT_SETTINGS } from '../core/types.js';
+
+function readRole(): WindowRole {
+  const role = new URLSearchParams(location.search).get('role');
+  return role === 'left' || role === 'right' || role === 'single' ? role : 'single';
+}
+
+function setupCanvas(canvas: HTMLCanvasElement): void {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(window.innerWidth * dpr);
+  canvas.height = Math.round(window.innerHeight * dpr);
+}
+
+async function main(): Promise<void> {
+  const role = readRole();
+  const stage = document.getElementById('stage') as HTMLElement;
+  const canvas = document.getElementById('page') as HTMLCanvasElement;
+  setupCanvas(canvas);
+
+  const reader = window.reader;
+  let spreadCount = 0;
+  let zoomPreset = DEFAULT_SETTINGS.defaultZoomPreset;
+
+  // The overlay lives only in the right window (or the single-window fallback).
+  const overlay =
+    role === 'left'
+      ? null
+      : new ControlOverlay({
+          onPrev: () => reader.prev(),
+          onNext: () => reader.next(),
+          onJump: (p) => reader.jumpToPage(p),
+          onToggleDirection: () => reader.toggleDirection(),
+          onSetZoom: (preset) => reader.setZoomPreset(preset),
+          onOpenLibrary: () => (location.href = 'splash.html'),
+          onExitFullScreen: () => reader.exitFullScreen(),
+        });
+
+  const settings = await reader.getSettings().catch(() => DEFAULT_SETTINGS);
+
+  attachNavigation(
+    stage,
+    {
+      onNext: () => reader.next(),
+      onPrev: () => reader.prev(),
+      onCenter: () => reader.requestOverlay(),
+    },
+    { tapZoneWidth: settings.tapZoneWidth },
+  );
+
+  reader.onInit(() => {
+    /* role already read from the query; init reserved for future use */
+  });
+
+  reader.onDocumentLoaded((info) => {
+    spreadCount = info.spreadCount;
+    zoomPreset = info.zoomPreset;
+  });
+
+  reader.onRender((instruction) => {
+    zoomPreset = instruction.zoomPreset;
+    void renderTarget(canvas, instruction.current, zoomPreset);
+    prefetch(instruction.prefetch);
+    overlay?.setCounter(instruction.spreadIndex, spreadCount);
+  });
+
+  reader.onShowError((error) => showError(stage, error));
+  reader.onShowOverlay(() => overlay?.show());
+
+  window.addEventListener('resize', () => {
+    setupCanvas(canvas);
+    // Re-request the current spread so it repaints at the new size.
+    reader.ready();
+  });
+
+  reader.ready();
+}
+
+void main();
