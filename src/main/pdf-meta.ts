@@ -6,11 +6,19 @@
  */
 
 import { promises as fs } from 'node:fs';
-// The legacy build runs under Node without a DOM.
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { classifyDocument, type PageDimensions } from '../core/aspect.js';
 import type { AspectClass } from '../core/types.js';
 import { FileLoadError } from './file-loader.js';
+
+// pdf.js v4 is ESM-only. The main-process bundle is CommonJS, so it must be
+// pulled in via a dynamic import() (require() of an .mjs throws ERR_REQUIRE_ESM).
+// The legacy build runs under Node without a DOM. Cache the module promise.
+type PdfjsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
+let pdfjsPromise: Promise<PdfjsModule> | null = null;
+function loadPdfjs(): Promise<PdfjsModule> {
+  if (!pdfjsPromise) pdfjsPromise = import('pdfjs-dist/legacy/build/pdf.mjs');
+  return pdfjsPromise;
+}
 
 export interface PdfMeta {
   totalPages: number;
@@ -21,6 +29,7 @@ export interface PdfMeta {
 /** Read page count + dimensions and classify the document. */
 export async function loadPdfMeta(filePath: string, override?: boolean): Promise<PdfMeta> {
   const data = new Uint8Array(await fs.readFile(filePath));
+  const { getDocument } = await loadPdfjs();
   let doc;
   try {
     doc = await getDocument({ data, isEvalSupported: false }).promise;
