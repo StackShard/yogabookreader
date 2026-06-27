@@ -8,6 +8,7 @@
 import { resolveTarget, paintSource, clearCanvas, prefetch, resetCaches } from './render-engine.js';
 import { attachNavigation } from './touch.js';
 import { ControlOverlay } from './overlay.js';
+import { HelpOverlay } from './help.js';
 import { showError } from './error.js';
 import type { RenderInstruction, WindowRole } from '../shared/ipc.js';
 import { DEFAULT_SETTINGS } from '../core/types.js';
@@ -31,7 +32,7 @@ async function main(): Promise<void> {
   setupCanvas(canvas);
 
   const reader = window.reader;
-  let spreadCount = 0;
+  let totalPages = 0;
   let zoomPreset = DEFAULT_SETTINGS.defaultZoomPreset;
   let currentFilePath: string | null = null;
   // Monotonic token so a slow async resolve from an earlier render can't paint
@@ -45,7 +46,8 @@ async function main(): Promise<void> {
 
   const settings = await reader.getSettings().catch(() => DEFAULT_SETTINGS);
 
-  // The overlay lives only in the right window (or the single-window fallback).
+  // The overlay and help diagram live only in the right (or single) window.
+  const help = role === 'left' ? null : new HelpOverlay(() => reader.markHelpShown());
   const overlay =
     role === 'left'
       ? null
@@ -60,8 +62,11 @@ async function main(): Promise<void> {
             onToggleFullScreen: () => reader.toggleFullScreen(),
             onQuit: () => reader.quit(),
             onSetBrightness: (level) => reader.setBrightness(level),
+            onToggleAdaptive: (disabled) => reader.setAdaptiveBrightnessDisabled(disabled),
+            onShowHelp: () => help?.show(),
           },
           settings.brightness,
+          settings.disableAdaptiveBrightness,
         );
 
   attachNavigation(
@@ -71,19 +76,26 @@ async function main(): Promise<void> {
       onPrev: () => reader.prev(),
       onCenter: () => reader.requestOverlay(),
     },
-    { tapZoneWidth: settings.tapZoneWidth },
+    { tapZoneWidth: settings.tapZoneWidth, edgeDeadZone: settings.edgeDeadZone },
   );
+
+  let helpAutoShown = settings.helpShown;
 
   reader.onInit(() => {
     /* role already read from the query; init reserved for future use */
   });
 
   reader.onDocumentLoaded((info) => {
-    spreadCount = info.spreadCount;
+    totalPages = info.totalPages;
     zoomPreset = info.zoomPreset;
     // Free the previous document's cached pages when switching files.
     if (currentFilePath !== null && currentFilePath !== info.filePath) resetCaches();
     currentFilePath = info.filePath;
+    // Show the tap-zone help once, on the first document ever opened.
+    if (!helpAutoShown && help) {
+      helpAutoShown = true;
+      help.show();
+    }
   });
 
   // Resolve with a couple of retries so a transient decode/IPC hiccup on one
@@ -106,7 +118,7 @@ async function main(): Promise<void> {
 
   reader.onRender((instruction) => {
     zoomPreset = instruction.zoomPreset;
-    overlay?.setCounter(instruction.spreadIndex, spreadCount);
+    overlay?.setProgress(instruction.pages, totalPages);
     prefetch(instruction.prefetch);
     const token = ++renderSeq;
     resolveWithRetry(instruction)

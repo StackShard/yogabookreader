@@ -8,7 +8,7 @@
  * Architecture).
  */
 
-import { buildSpreads } from '../core/spread.js';
+import { buildSpreads, pagesInSpread } from '../core/spread.js';
 import {
   anchorPageOfSpread,
   clampSpreadIndex,
@@ -170,11 +170,13 @@ export class ReaderSession {
       prevSpreadIndex(this.index, this.spreads.length),
     ].filter((i) => i !== this.index);
 
+    const currentSpread = this.spreads[this.index];
     return {
       current: at(this.index),
       prefetch: prefetchIndices.map(at),
       zoomPreset: this.zoomPreset,
       spreadIndex: clampSpreadIndex(this.index, this.spreads.length),
+      pages: currentSpread ? pagesInSpread(currentSpread) : [],
     };
   }
 

@@ -38,7 +38,7 @@ app.whenReady().then(async () => {
 
   controller.registerHandlers();
   bootWindows();
-  controller.applyStoredBrightness();
+  void controller.applyStoredBrightness();
 
   // Survive docking/undocking and posture changes: re-evaluate the layout.
   screen.on('display-added', () => controller.relayout());
@@ -57,12 +57,13 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', async (event) => {
-  // Clean the comic temp directory on exit (PRD §Rendering "CBZ/CBR").
+  // Clean the comic temp directory and restore Windows adaptive brightness on exit.
   event.preventDefault();
   try {
+    await controller.restoreAdaptiveBrightness();
     await cleanupAllTemp();
   } catch (err) {
-    log('temp cleanup on quit failed:', (err as Error).message);
+    log('cleanup on quit failed:', (err as Error).message);
   } finally {
     app.exit(0);
   }

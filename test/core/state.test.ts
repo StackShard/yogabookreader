@@ -51,6 +51,19 @@ describe('normalizeSettings', () => {
     );
     expect(normalizeSettings({}).brightness).toBe(DEFAULT_SETTINGS.brightness);
   });
+
+  it('validates edgeDeadZone and the new toggles', () => {
+    expect(normalizeSettings({ edgeDeadZone: 0.1 }).edgeDeadZone).toBe(0.1);
+    expect(normalizeSettings({ edgeDeadZone: 0.9 }).edgeDeadZone).toBe(
+      DEFAULT_SETTINGS.edgeDeadZone,
+    );
+    expect(normalizeSettings({ disableAdaptiveBrightness: false }).disableAdaptiveBrightness).toBe(
+      false,
+    );
+    expect(normalizeSettings({}).disableAdaptiveBrightness).toBe(true);
+    expect(normalizeSettings({ helpShown: true }).helpShown).toBe(true);
+    expect(normalizeSettings({}).helpShown).toBe(false);
+  });
 });
 
 describe('deserialize', () => {

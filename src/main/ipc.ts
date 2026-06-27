@@ -41,7 +41,7 @@ import {
   saveFileState,
   updateSettings,
 } from './state-store.js';
-import { setHardwareBrightness } from './brightness.js';
+import { setAdaptiveBrightness, setHardwareBrightness } from './brightness.js';
 
 export class ReaderController {
   private session: ReaderSession | null = null;
@@ -115,6 +115,12 @@ export class ReaderController {
     ipcMain.on(RendererToMain.setBrightness, (_e, level: number) => {
       void this.setBrightness(level);
     });
+    ipcMain.on(RendererToMain.setAdaptiveBrightnessDisabled, (_e, disabled: boolean) => {
+      void this.setAdaptiveBrightnessDisabled(disabled);
+    });
+    ipcMain.on(RendererToMain.markHelpShown, () => {
+      updateSettings({ helpShown: true });
+    });
   }
 
   /** The open document for the splash "Resume reading" button, if any. */
@@ -144,9 +150,27 @@ export class ReaderController {
     }
   }
 
-  /** Apply the persisted brightness once at startup. */
-  applyStoredBrightness(): void {
-    void this.setBrightness(getSettings().brightness);
+  /**
+   * Apply persisted brightness settings at startup: optionally disable Windows
+   * adaptive brightness (so it can't override the manual level), then set it.
+   */
+  async applyStoredBrightness(): Promise<void> {
+    const settings = getSettings();
+    if (settings.disableAdaptiveBrightness) await setAdaptiveBrightness(false);
+    await this.setBrightness(settings.brightness);
+  }
+
+  /** Toggle disabling of Windows adaptive brightness (persisted). */
+  private async setAdaptiveBrightnessDisabled(disabled: boolean): Promise<void> {
+    updateSettings({ disableAdaptiveBrightness: disabled });
+    // disabled => turn adaptive OFF; enabled again => turn it back ON.
+    await setAdaptiveBrightness(!disabled);
+    if (disabled) await this.setBrightness(getSettings().brightness);
+  }
+
+  /** Restore Windows adaptive brightness (call on quit). */
+  async restoreAdaptiveBrightness(): Promise<void> {
+    if (getSettings().disableAdaptiveBrightness) await setAdaptiveBrightness(true);
   }
 
   private async getLibrary(): Promise<LibraryItemView[]> {
