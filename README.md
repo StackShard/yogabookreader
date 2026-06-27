@@ -44,6 +44,43 @@ npm run dev          # run the app in development (requires the Electron binary)
 npm run package      # build a portable Windows .exe (electron-builder)
 ```
 
+## Windows quick start (Yoga Book, nothing installed)
+
+The Yoga Book Gen 10 runs Windows 11, which ships with `winget`, so you can set up
+the toolchain from PowerShell without downloading any installers by hand.
+
+1. Install Node.js (includes `npm`) and Git:
+
+   ```powershell
+   winget install OpenJS.NodeJS.LTS Git.Git --accept-source-agreements --accept-package-agreements
+   ```
+
+2. **Close and reopen PowerShell** so the updated `PATH` takes effect, then get the
+   code and install dependencies:
+
+   ```powershell
+   git clone https://github.com/StackShard/yogabookreader.git
+   cd yogabookreader
+   npm install
+   ```
+
+   > The first `npm install` downloads Electron's runtime (~100 MB). That's normal
+   > on a regular network connection.
+
+3. Either run the app directly, or build a double-clickable portable executable:
+
+   ```powershell
+   npm run dev        # launch the app in development
+
+   # ...or produce a standalone portable .exe (no installer):
+   npm run package
+   .\dist\YogaBookReader-1.0.0-portable.exe
+   ```
+
+The portable `.exe` under `dist\` needs no installation — copy it anywhere and run
+it. Plug in both Yoga Book screens (portrait) before launching for the two-page
+spread; with one screen it falls back to single-page mode.
+
 ## Status
 
 The pure-logic core is complete and unit-tested (54 tests). The Electron
