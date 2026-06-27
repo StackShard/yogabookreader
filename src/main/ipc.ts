@@ -7,10 +7,12 @@
  */
 
 import path from 'node:path';
+import { promises as fs } from 'node:fs';
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import {
   BRIGHTNESS_MAX,
   BRIGHTNESS_MIN,
+  DEFAULT_SETTINGS,
   type DisplayMode,
   type ReadingDirection,
   type ZoomPreset,
@@ -18,6 +20,8 @@ import {
 import {
   MainToRenderer,
   RendererToMain,
+  type CoverSource,
+  type LibraryGroup,
   type LibraryItemView,
   type ReaderError,
   type RecentFileView,
@@ -30,7 +34,9 @@ import {
 } from './file-loader.js';
 import { loadPdfMeta } from './pdf-meta.js';
 import { ReaderSession } from './session.js';
-import { scanFolder } from './library-scanner.js';
+import { scanFolder, thumbnailCacheDir } from './library-scanner.js';
+import { extractFirstImage, hashPath } from './cbz-extractor.js';
+import { fileUrl as coverUrl } from './protocol.js';
 import { currentPlacement, loadPage, type ReaderPage, type ReaderWindow } from './windows.js';
 import { log, logError } from './log.js';
 import {
@@ -107,7 +113,13 @@ export class ReaderController {
     );
     ipcMain.handle(RendererToMain.getSettings, () => getSettings());
     ipcMain.handle(RendererToMain.getLibrary, () => this.getLibrary());
+    ipcMain.handle(RendererToMain.pickFolder, () => this.pickFolder());
     ipcMain.handle(RendererToMain.getResumeInfo, () => this.getResumeInfo());
+    ipcMain.handle(RendererToMain.getCachedCover, (_e, fp: string) => this.getCachedCover(fp));
+    ipcMain.handle(RendererToMain.getCoverSource, (_e, fp: string) => this.getCoverSource(fp));
+    ipcMain.handle(RendererToMain.saveCover, (_e, fp: string, durl: string) =>
+      this.saveCover(fp, durl),
+    );
     ipcMain.on(RendererToMain.pickFile, () => {
       this.pickFile().catch((e) => logError('pickFile failed:', e));
     });
@@ -182,15 +194,69 @@ export class ReaderController {
     if (getSettings().disableAdaptiveBrightness) await setAdaptiveBrightness(true);
   }
 
-  private async getLibrary(): Promise<LibraryItemView[]> {
+  /** Scanned library grouped into one section per sub-folder. */
+  private async getLibrary(): Promise<LibraryGroup[]> {
     const root = getSettings().rootFolder;
     if (!root) return [];
     const entries = await scanFolder(root);
-    return entries.map((e) => ({
-      filePath: e.filePath,
-      displayName: e.displayName,
-      type: e.type,
-    }));
+    const groups = new Map<string, LibraryItemView[]>();
+    for (const e of entries) {
+      const folder = e.relativeDir === '' ? 'Library' : e.relativeDir;
+      const item: LibraryItemView = { filePath: e.filePath, displayName: e.displayName, type: e.type };
+      const list = groups.get(folder);
+      if (list) list.push(item);
+      else groups.set(folder, [item]);
+    }
+    return [...groups.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
+      .map(([folder, items]) => ({ folder, items }));
+  }
+
+  /** Let the user pick the library root folder; persist it and rescan. */
+  private async pickFolder(): Promise<LibraryGroup[]> {
+    const result = await dialog.showOpenDialog({ properties: ['openDirectory'] });
+    if (!result.canceled && result.filePaths[0]) {
+      updateSettings({ rootFolder: result.filePaths[0] });
+    }
+    return this.getLibrary();
+  }
+
+  /** Return a cached cover thumbnail URL for a file, or null if not generated yet. */
+  private async getCachedCover(filePath: string): Promise<string | null> {
+    const file = path.join(thumbnailCacheDir(), `${hashPath(filePath)}.jpg`);
+    try {
+      await fs.access(file);
+      return coverUrl(file);
+    } catch {
+      return null;
+    }
+  }
+
+  /** The source the renderer needs to rasterize a cover (PDF file or first image). */
+  private async getCoverSource(filePath: string): Promise<CoverSource | null> {
+    const type = detectType(filePath);
+    if (!type) return null;
+    if (type === 'pdf') return { kind: 'pdf', url: coverUrl(filePath) };
+    try {
+      const img = await extractFirstImage(filePath, type);
+      return img ? { kind: 'image', url: coverUrl(img) } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Persist a renderer-generated cover (data URL) to the thumbnail cache. */
+  private async saveCover(filePath: string, dataUrl: string): Promise<string | null> {
+    const match = /^data:image\/\w+;base64,(.+)$/.exec(dataUrl);
+    if (!match) return null;
+    try {
+      await fs.mkdir(thumbnailCacheDir(), { recursive: true });
+      const file = path.join(thumbnailCacheDir(), `${hashPath(filePath)}.jpg`);
+      await fs.writeFile(file, Buffer.from(match[1], 'base64'));
+      return coverUrl(file);
+    } catch {
+      return null;
+    }
   }
 
   private async pickFile(): Promise<void> {
@@ -257,7 +323,9 @@ export class ReaderController {
     const settings = getSettings();
     const fileState = getFileState(filePath);
     const readingDirection = fileState?.readingDirection ?? settings.defaultReadingDirection;
-    const zoomPreset = fileState?.zoomPreset ?? settings.defaultZoomPreset;
+    // Always open at the code default (Fit Width); ignore stale persisted zoom so
+    // the default reliably wins. The overlay buttons still change it per session.
+    const zoomPreset = DEFAULT_SETTINGS.defaultZoomPreset;
     const override = fileState?.isSpreadEncoded;
     const displayMode = currentPlacement().mode === 'dual' ? 'dual' : 'single';
 

@@ -82,21 +82,23 @@ export class ControlOverlay {
       this.button('⌄ Hide', () => this.hide()),
     );
 
-    // Expanded drawer: grouped by purpose for a predictable flow.
+    // Expanded drawer: grouped into labelled sections for a predictable flow.
     const expanded = document.createElement('div');
     expanded.className = 'overlay-expanded';
     expanded.append(
-      this.row(
+      this.section(
+        'View',
         this.button('Fit Width', () => this.cb.onSetZoom('fit-width')),
         this.button('Fit Height', () => this.cb.onSetZoom('fit-height')),
         this.button('Full Bleed', () => this.cb.onSetZoom('full-bleed')),
       ),
-      this.row(
+      this.section(
+        'Reading',
         this.button('LTR / RTL', () => this.cb.onToggleDirection()),
         this.gotoInput(),
       ),
-      this.row(this.brightnessControl(), this.adaptiveButton),
-      this.row(this.fullScreenButton, this.button('Quit', () => this.cb.onQuit())),
+      this.section('Display', this.brightnessControl(), this.adaptiveButton),
+      this.section('App', this.fullScreenButton, this.button('Quit', () => this.cb.onQuit())),
     );
     // Order matters: the minimal bar is last so it stays pinned to the bottom
     // edge; the drawer expands upward above it, keeping the buttons in place.
@@ -149,12 +151,18 @@ export class ControlOverlay {
     return b;
   }
 
-  /** A labelled group of controls within the expanded drawer. */
-  private row(...children: HTMLElement[]): HTMLElement {
-    const r = document.createElement('div');
-    r.className = 'overlay-row';
-    r.append(...children);
-    return r;
+  /** A labelled group of controls (label + a centered row) in the expanded drawer. */
+  private section(label: string, ...children: HTMLElement[]): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className = 'overlay-section';
+    const heading = document.createElement('span');
+    heading.className = 'overlay-row-label';
+    heading.textContent = label;
+    const row = document.createElement('div');
+    row.className = 'overlay-row';
+    row.append(...children);
+    wrap.append(heading, row);
+    return wrap;
   }
 
   private gotoInput(): HTMLElement {

@@ -27,7 +27,8 @@ function naturalCompare(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 }
 
-function hashPath(filePath: string): string {
+/** Stable short hash of a file path (used for temp dirs and thumbnail names). */
+export function hashPath(filePath: string): string {
   return createHash('sha1').update(filePath).digest('hex').slice(0, 16);
 }
 
@@ -89,4 +90,42 @@ export async function extractComic(
     .filter(isImageEntry)
     .sort(naturalCompare)
     .map((name) => path.join(dir, name));
+}
+
+/**
+ * Extract just the first image (the cover) of a comic archive and return its
+ * path. Cheaper than extracting the whole archive for a thumbnail.
+ */
+export async function extractFirstImage(
+  filePath: string,
+  kind: 'cbz' | 'cbr',
+): Promise<string | null> {
+  const dir = path.join(workDir(filePath), 'cover');
+  await fs.mkdir(dir, { recursive: true });
+
+  if (kind === 'cbz') {
+    const zip = new AdmZip(filePath);
+    const first = zip
+      .getEntries()
+      .filter((e) => !e.isDirectory && isImageEntry(e.entryName))
+      .sort((a, b) => naturalCompare(a.entryName, b.entryName))[0];
+    if (!first) return null;
+    const out = path.join(dir, path.basename(first.entryName));
+    await fs.writeFile(out, first.getData());
+    return out;
+  }
+
+  // CBR: extract all (node-unrar-js has no single-entry API), keep the first image.
+  const data = await fs.readFile(filePath);
+  const extractor = await createExtractorFromData({
+    data: data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
+  });
+  const files = [...extractor.extract().files]
+    .filter((f) => f.extraction && isImageEntry(f.fileHeader.name))
+    .sort((a, b) => naturalCompare(a.fileHeader.name, b.fileHeader.name));
+  const first = files[0];
+  if (!first || !first.extraction) return null;
+  const out = path.join(dir, path.basename(first.fileHeader.name));
+  await fs.writeFile(out, first.extraction);
+  return out;
 }

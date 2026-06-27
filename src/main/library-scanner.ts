@@ -18,6 +18,8 @@ export interface LibraryEntry {
   filePath: string;
   displayName: string;
   type: DocumentType;
+  /** Directory of the file relative to the scanned root (''-> directly in root). */
+  relativeDir: string;
 }
 
 /** Directory where generated cover thumbnails are cached. */
@@ -25,10 +27,17 @@ export function thumbnailCacheDir(): string {
   return path.join(app.getPath('userData'), 'thumbnails');
 }
 
-function toEntry(filePath: string): LibraryEntry | null {
+function toEntry(filePath: string, root: string): LibraryEntry | null {
   const type = detectType(filePath);
   if (!type) return null;
-  return { filePath, displayName: path.basename(filePath, path.extname(filePath)), type };
+  // Normalize separators so the relative folder reads the same on any platform.
+  const relativeDir = path.relative(root, path.dirname(filePath)).split(path.sep).join('/');
+  return {
+    filePath,
+    displayName: path.basename(filePath, path.extname(filePath)),
+    type,
+    relativeDir,
+  };
 }
 
 /** Recursively collect supported documents under a root folder. */
@@ -47,7 +56,7 @@ export async function scanFolder(root: string): Promise<LibraryEntry[]> {
       if (dirent.isDirectory()) {
         await walk(full);
       } else if (SUPPORTED_EXTENSIONS.includes(path.extname(dirent.name).toLowerCase())) {
-        const entry = toEntry(full);
+        const entry = toEntry(full, root);
         if (entry) results.push(entry);
       }
     }
