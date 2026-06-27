@@ -69,28 +69,34 @@ export class ControlOverlay {
     track.appendChild(this.progressFill);
     progress.append(this.progressLabel, track);
 
+    // Minimal bar: page navigation first (most-used), then library/help/more,
+    // and a manual hide on the far right.
     const minimal = document.createElement('div');
     minimal.className = 'overlay-bar';
     minimal.append(
-      this.button('‹', () => this.cb.onPrev()),
-      this.button('›', () => this.cb.onNext()),
+      this.button('‹ Prev', () => this.cb.onPrev(), 'overlay-btn-nav'),
+      this.button('Next ›', () => this.cb.onNext(), 'overlay-btn-nav'),
       this.button('▦ Library', () => this.cb.onOpenLibrary()),
       this.button('? Help', () => this.cb.onShowHelp()),
       this.button('⚙ More', () => this.toggleExpanded()),
+      this.button('⌄ Hide', () => this.hide()),
     );
 
+    // Expanded drawer: grouped by purpose for a predictable flow.
     const expanded = document.createElement('div');
     expanded.className = 'overlay-expanded';
     expanded.append(
-      this.button('Fit Height', () => this.cb.onSetZoom('fit-height')),
-      this.button('Fit Width', () => this.cb.onSetZoom('fit-width')),
-      this.button('Full Bleed', () => this.cb.onSetZoom('full-bleed')),
-      this.button('LTR / RTL', () => this.cb.onToggleDirection()),
-      this.gotoInput(),
-      this.brightnessControl(),
-      this.adaptiveButton,
-      this.fullScreenButton,
-      this.button('Quit', () => this.cb.onQuit()),
+      this.row(
+        this.button('Fit Width', () => this.cb.onSetZoom('fit-width')),
+        this.button('Fit Height', () => this.cb.onSetZoom('fit-height')),
+        this.button('Full Bleed', () => this.cb.onSetZoom('full-bleed')),
+      ),
+      this.row(
+        this.button('LTR / RTL', () => this.cb.onToggleDirection()),
+        this.gotoInput(),
+      ),
+      this.row(this.brightnessControl(), this.adaptiveButton),
+      this.row(this.fullScreenButton, this.button('Quit', () => this.cb.onQuit())),
     );
     this.root.append(progress, minimal, expanded);
   }
@@ -130,15 +136,23 @@ export class ControlOverlay {
     this.fullScreenButton.textContent = isFullScreen ? 'Exit Full-Screen' : 'Enter Full-Screen';
   }
 
-  private button(label: string, onClick: () => void): HTMLButtonElement {
+  private button(label: string, onClick: () => void, extraClass = ''): HTMLButtonElement {
     const b = document.createElement('button');
     b.textContent = label;
-    b.className = 'overlay-btn';
+    b.className = `overlay-btn${extraClass ? ' ' + extraClass : ''}`;
     b.addEventListener('click', () => {
       onClick();
       this.poke();
     });
     return b;
+  }
+
+  /** A labelled group of controls within the expanded drawer. */
+  private row(...children: HTMLElement[]): HTMLElement {
+    const r = document.createElement('div');
+    r.className = 'overlay-row';
+    r.append(...children);
+    return r;
   }
 
   private gotoInput(): HTMLElement {
@@ -206,10 +220,10 @@ export class ControlOverlay {
     this.root.classList.toggle('expanded', value);
   }
 
-  /** Reset the inactivity timer that auto-hides the overlay (paused while hovered/expanded). */
+  /** Reset the inactivity timer that auto-hides the overlay (paused only while touched). */
   private poke(): void {
     if (this.hideTimer) clearTimeout(this.hideTimer);
-    if (this.hovered || this.expanded) return;
+    if (this.hovered) return;
     this.hideTimer = setTimeout(() => this.hide(), AUTO_HIDE_MS);
   }
 

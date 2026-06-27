@@ -120,7 +120,7 @@ export interface PersistedState {
 export const DEFAULT_SETTINGS: AppSettings = {
   rootFolder: null,
   defaultReadingDirection: 'ltr',
-  defaultZoomPreset: 'fit-height', // PRD US#14: Fit-Height is the default.
+  defaultZoomPreset: 'fit-width', // default to full screen width per user preference.
   tapZoneWidth: 0.4, // PRD §Touch Navigation: 40% side zones, 20% center.
   edgeDeadZone: 0.07, // outer grip margin on each side, ignored for taps.
   brightness: 100,
