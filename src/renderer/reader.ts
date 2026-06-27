@@ -46,8 +46,9 @@ async function main(): Promise<void> {
 
   const settings = await reader.getSettings().catch(() => DEFAULT_SETTINGS);
 
-  // The overlay and help diagram live only in the right (or single) window.
-  const help = role === 'left' ? null : new HelpOverlay(() => reader.markHelpShown());
+  // The help diagram exists on every window (shown on both screens on request);
+  // the control overlay lives only on the right (or single) window.
+  const help = new HelpOverlay(() => reader.markHelpShown());
   const overlay =
     role === 'left'
       ? null
@@ -63,7 +64,7 @@ async function main(): Promise<void> {
             onQuit: () => reader.quit(),
             onSetBrightness: (level) => reader.setBrightness(level),
             onToggleAdaptive: (disabled) => reader.setAdaptiveBrightnessDisabled(disabled),
-            onShowHelp: () => help?.show(),
+            onShowHelp: () => reader.requestHelp(), // show on BOTH screens via main
           },
           settings.brightness,
           settings.disableAdaptiveBrightness,
@@ -91,10 +92,11 @@ async function main(): Promise<void> {
     // Free the previous document's cached pages when switching files.
     if (currentFilePath !== null && currentFilePath !== info.filePath) resetCaches();
     currentFilePath = info.filePath;
-    // Show the tap-zone help once, on the first document ever opened.
-    if (!helpAutoShown && help) {
+    // Show the tap-zone help once, on the first document ever opened. Trigger
+    // from the primary window only; main broadcasts it to both screens.
+    if (!helpAutoShown && role !== 'left') {
       helpAutoShown = true;
-      help.show();
+      reader.requestHelp();
     }
   });
 
@@ -136,6 +138,7 @@ async function main(): Promise<void> {
 
   reader.onShowError((error) => showError(stage, error));
   reader.onShowOverlay(() => overlay?.show());
+  reader.onShowHelp(() => help.show());
   reader.onFullScreenChanged((isFs) => overlay?.setFullScreenState(isFs));
   reader.onSetDim((level) => {
     dimLayer.style.opacity = level === null ? '0' : String((100 - level) / 100);

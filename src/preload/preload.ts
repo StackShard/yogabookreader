@@ -27,6 +27,7 @@ const bridge: ReaderBridge = {
   onShowError: (cb: (error: ReaderError) => void) =>
     ipcRenderer.on(MainToRenderer.showError, (_e, error: ReaderError) => cb(error)),
   onShowOverlay: (cb: () => void) => ipcRenderer.on(MainToRenderer.showOverlay, () => cb()),
+  onShowHelp: (cb: () => void) => ipcRenderer.on(MainToRenderer.showHelp, () => cb()),
   onFullScreenChanged: (cb: (isFullScreen: boolean) => void) =>
     ipcRenderer.on(MainToRenderer.fullScreenChanged, (_e, value: boolean) => cb(value)),
   onSetDim: (cb: (level: number | null) => void) =>
@@ -50,6 +51,7 @@ const bridge: ReaderBridge = {
   setAdaptiveBrightnessDisabled: (disabled: boolean) =>
     ipcRenderer.send(RendererToMain.setAdaptiveBrightnessDisabled, disabled),
   markHelpShown: () => ipcRenderer.send(RendererToMain.markHelpShown),
+  requestHelp: () => ipcRenderer.send(RendererToMain.requestHelp),
   quit: () => ipcRenderer.send(RendererToMain.quit),
 
   getRecentFiles: (): Promise<RecentFileView[]> =>

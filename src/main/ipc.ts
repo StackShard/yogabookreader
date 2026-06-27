@@ -121,6 +121,11 @@ export class ReaderController {
     ipcMain.on(RendererToMain.markHelpShown, () => {
       updateSettings({ helpShown: true });
     });
+    ipcMain.on(RendererToMain.requestHelp, () => {
+      for (const { window } of this.windows) {
+        if (!window.isDestroyed()) window.webContents.send(MainToRenderer.showHelp);
+      }
+    });
   }
 
   /** The open document for the splash "Resume reading" button, if any. */

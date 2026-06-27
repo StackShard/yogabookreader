@@ -38,7 +38,7 @@ describe('normalizeSettings', () => {
       tapZoneWidth: 0.9,
     });
     expect(s.defaultReadingDirection).toBe('ltr');
-    expect(s.defaultZoomPreset).toBe('fit-height');
+    expect(s.defaultZoomPreset).toBe('fit-width');
     expect(s.tapZoneWidth).toBe(DEFAULT_SETTINGS.tapZoneWidth);
   });
 
@@ -83,7 +83,7 @@ describe('deserialize', () => {
     const a = state.files['/a.pdf'];
     expect(a.lastPage).toBe(12);
     expect(a.readingDirection).toBe('rtl');
-    expect(a.zoomPreset).toBe('fit-height'); // default applied
+    expect(a.zoomPreset).toBe('fit-width'); // default applied
     expect(a.isSpreadEncoded).toBeUndefined(); // omitted -> auto
   });
 

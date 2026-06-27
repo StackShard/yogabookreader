@@ -86,6 +86,7 @@ export const RendererToMain = {
   toggleFullScreen: 'r2m:toggle-full-screen',
   setAdaptiveBrightnessDisabled: 'r2m:set-adaptive-brightness-disabled',
   markHelpShown: 'r2m:mark-help-shown',
+  requestHelp: 'r2m:request-help',
   quit: 'r2m:quit',
 } as const;
 
@@ -96,6 +97,7 @@ export const MainToRenderer = {
   render: 'm2r:render',
   showError: 'm2r:show-error',
   showOverlay: 'm2r:show-overlay',
+  showHelp: 'm2r:show-help',
   fullScreenChanged: 'm2r:full-screen-changed',
   setDim: 'm2r:set-dim',
 } as const;
@@ -112,6 +114,7 @@ export interface ReaderBridge {
   onRender(cb: (instruction: RenderInstruction) => void): void;
   onShowError(cb: (error: ReaderError) => void): void;
   onShowOverlay(cb: () => void): void;
+  onShowHelp(cb: () => void): void;
   onFullScreenChanged(cb: (isFullScreen: boolean) => void): void;
   onSetDim(cb: (level: number | null) => void): void;
 
@@ -131,6 +134,7 @@ export interface ReaderBridge {
   toggleFullScreen(): void;
   setAdaptiveBrightnessDisabled(disabled: boolean): void;
   markHelpShown(): void;
+  requestHelp(): void;
   quit(): void;
 
   getRecentFiles(): Promise<RecentFileView[]>;
