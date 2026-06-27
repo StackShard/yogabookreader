@@ -22,7 +22,13 @@ const imageCache = new Map<string, Promise<HTMLImageElement>>();
 function getPdf(filePath: string): Promise<pdfjsLib.PDFDocumentProxy> {
   let doc = pdfDocs.get(filePath);
   if (!doc) {
-    doc = pdfjsLib.getDocument({ url: fileUrl(filePath), isEvalSupported: false }).promise;
+    doc = pdfjsLib.getDocument({
+      url: fileUrl(filePath),
+      isEvalSupported: false,
+      // Our protocol handler returns the whole file; skip range/stream requests.
+      disableRange: true,
+      disableStream: true,
+    }).promise;
     pdfDocs.set(filePath, doc);
   }
   return doc;
@@ -43,11 +49,9 @@ function getImage(imagePath: string): Promise<HTMLImageElement> {
 }
 
 function fileUrl(p: string): string {
-  // Normalize Windows backslashes and ensure an absolute file:// URL with the
-  // correct number of slashes (Windows "C:\x" -> "file:///C:/x").
-  const norm = p.replace(/\\/g, '/');
-  const withSlash = norm.startsWith('/') ? norm : '/' + norm;
-  return 'file://' + encodeURI(withSlash);
+  // Serve local files through the privileged app protocol (the renderer is not
+  // allowed to load file:// resources). See src/main/protocol.ts.
+  return `yreader://f/${encodeURIComponent(p)}`;
 }
 
 /** Region of the source to draw, accounting for a left/right half crop. */

@@ -14,9 +14,8 @@ export interface GalleryItem {
 }
 
 function fileUrl(p: string): string {
-  const norm = p.replace(/\\/g, '/');
-  const withSlash = norm.startsWith('/') ? norm : '/' + norm;
-  return 'file://' + encodeURI(withSlash);
+  // Served via the privileged app protocol (see src/main/protocol.ts).
+  return `yreader://f/${encodeURIComponent(p)}`;
 }
 
 function tile(item: GalleryItem, onOpen: (filePath: string) => void): HTMLElement {
