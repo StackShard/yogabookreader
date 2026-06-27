@@ -12,6 +12,12 @@
   padding: 0;
 }
 
+/* Ensure the `hidden` attribute always wins over component display rules
+   (e.g. .secondary-view sets display:flex). */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   height: 100%;
