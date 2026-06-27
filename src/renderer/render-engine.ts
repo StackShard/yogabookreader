@@ -43,8 +43,11 @@ function getImage(imagePath: string): Promise<HTMLImageElement> {
 }
 
 function fileUrl(p: string): string {
-  // Normalize Windows backslashes and encode for a file:// URL.
-  return 'file://' + encodeURI(p.replace(/\\/g, '/'));
+  // Normalize Windows backslashes and ensure an absolute file:// URL with the
+  // correct number of slashes (Windows "C:\x" -> "file:///C:/x").
+  const norm = p.replace(/\\/g, '/');
+  const withSlash = norm.startsWith('/') ? norm : '/' + norm;
+  return 'file://' + encodeURI(withSlash);
 }
 
 /** Region of the source to draw, accounting for a left/right half crop. */

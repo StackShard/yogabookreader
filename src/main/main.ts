@@ -11,6 +11,7 @@ import { ReaderController } from './ipc.js';
 import { createReaderWindows } from './windows.js';
 import { getSettings } from './state-store.js';
 import { cleanupAllTemp, cleanupStaleTemp } from './cbz-extractor.js';
+import { log } from './log.js';
 
 // Enforce a single instance so both windows share one main process & state.
 if (!app.requestSingleInstanceLock()) {
@@ -25,6 +26,7 @@ function bootWindows(): void {
 }
 
 app.whenReady().then(async () => {
+  log('app ready, node', process.versions.node, 'electron', process.versions.electron);
   // Remove any temp files left by a previous crash (PRD Further Notes).
   await cleanupStaleTemp();
 
