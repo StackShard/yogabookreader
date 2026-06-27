@@ -12,8 +12,9 @@ import {
 } from './library.js';
 
 function openDocument(filePath: string): void {
+  // The main process navigates every window from splash to the reader once the
+  // document loads, so we don't navigate here.
   window.reader.openFile(filePath);
-  location.href = 'index.html';
 }
 
 async function main(): Promise<void> {
