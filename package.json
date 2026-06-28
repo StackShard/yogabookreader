@@ -1,7 +1,7 @@
 {
   "name": "yogabookreader",
   "version": "1.0.0",
-  "description": "Dual-screen magazine/manga reader for the Lenovo Yoga Book Gen 10",
+  "description": "Dual-screen document reader for Windows — PDF, manga, and comics rendered as a two-page spread across portrait displays",
   "author": "StackShard",
   "license": "CC-BY-NC-SA-4.0",
   "main": "out/main/main.js",

@@ -30,6 +30,6 @@ body:
     id: device_check
     attributes:
       label: Device Context
-      description: This app is designed for the Lenovo Yoga Book Gen 10
+      description: This app is designed for dual-screen Windows devices
       options:
-        - label: This feature is relevant to the Yoga Book dual-screen experience
+        - label: This feature is relevant to the dual-screen reading experience

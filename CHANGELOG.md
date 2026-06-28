@@ -9,7 +9,7 @@ All notable changes to Yoga Book Reader are documented here.
 First public release of the Yoga Book Reader.
 
 #### Reading Engine
-- Dual-screen spread rendering — both 1800×2880 portrait displays treated as a single open-book surface
+- Dual-screen spread rendering — two portrait displays treated as a single open-book surface
 - Cover-first spread ordering with proper centerfold handling (wide pages span both screens via half-crop)
 - LTR and RTL reading direction support
 - Single-display fallback when only one screen is connected or in landscape

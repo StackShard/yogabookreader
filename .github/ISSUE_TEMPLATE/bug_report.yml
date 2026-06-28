@@ -20,7 +20,7 @@ body:
     attributes:
       label: Device
       description: Which device are you on?
-      placeholder: "Lenovo Yoga Book Gen 10"
+      placeholder: "Lenovo Yoga Book Gen 10 / Surface Pro / custom dual-monitor setup / etc."
     validations:
       required: true
   - type: textarea

@@ -1,8 +1,9 @@
 # Contributing
 
 Yoga Book Reader is open source and welcomes contributions. The app is designed
-specifically for the Lenovo Yoga Book Gen 10 dual-screen device, but the core
-logic is hardware-independent and cross-platform.
+for dual-screen Windows devices — it detects portrait displays and renders content
+across them as a two-page spread. The core logic is hardware-independent and
+platform-agnostic.
 
 ## Development Setup
 
@@ -37,20 +38,21 @@ The project enforces a clean separation of concerns:
 
 - [ ] `npm run typecheck` passes with no errors
 - [ ] `npm test` passes (57 tests in `src/core/`)
-- [ ] If your change affects rendering, tested on actual Yoga Book hardware or
-      dual 1800×2880 portrait monitors
+- [ ] If your change affects rendering, tested on dual portrait displays or a
+      single display in portrait mode
 - [ ] If your change affects the IPC contract, both main and renderer compile
 - [ ] No Electron/Node.js imports added to `src/core/`
 
 ## Testing on Hardware
 
 CI cannot provide dual portrait displays. The Electron rendering layer is best
-verified on a Yoga Book Gen 10:
+verified on a device with two portrait screens:
 
-1. Connect both screens in portrait orientation
+1. Connect both screens in portrait orientation, side by side
 2. `npm run dev` for live development, or `npm run package` to test the built .exe
 3. Test with PDF, CBZ, and CBR files
-4. Test single-screen fallback by folding the device or switching one display to landscape
+4. Test single-screen fallback by disconnecting a display or switching one to
+   landscape
 5. Test display detection by changing screen orientation while the app is running
 
 ## License

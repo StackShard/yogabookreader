@@ -4,16 +4,34 @@
 
 ### What is Yoga Book Reader?
 
-Yoga Book Reader turns your **Lenovo Yoga Book Gen 10** into a two-screen book. It
-displays PDFs, manga (CBZ), and comics (CBR) across both 1800×2880 portrait screens
-as a seamless two-page spread — like reading an open magazine or book. One screen
-shows the left page, the other shows the right page.
+Yoga Book Reader turns a dual-screen Windows device into an open book. It displays
+PDFs, manga (CBZ), and comics (CBR) across two portrait screens as a seamless
+two-page spread — left page on one screen, right page on the other, just like reading
+a magazine or paperback.
 
 The app is free and open source. No ads, no tracking, no data collection.
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X3X4228M3H)
 
 *Did you love this? Click a link, buy me a coffee. Not a subscription, just a one-time thanks.*
+
+> **Backstory** — This project was born out of the Lenovo Yoga Book Gen 10. It has
+> two beautiful 1800×2880 portrait screens that are practically begging to be used as
+> a book, but no reader app treated them as a two-page spread. So I built one. As it
+> turns out, the approach is entirely device-agnostic: if your laptop or tablet has
+> two portrait screens side by side, it'll work. That includes the Yoga Book Gen 9,
+> the Surface Neo (RIP), and even a desktop with two rotated monitors.
+
+### Will it work on my device?
+
+If your device meets these two requirements, yes:
+
+- **Windows** — the app is a native Windows executable
+- **Two portrait screens side by side** — the app detects portrait orientation and
+  side-by-side positioning automatically. Only one screen? It falls back to
+  single-page mode. Landscape? Rotate to portrait in Display Settings.
+
+That's it. No specific brand, model, or resolution required.
 
 ### Download & Run
 
@@ -52,9 +70,9 @@ Get-FileHash .\YogaBookReader-1.0.0-portable.exe -Algorithm SHA256
 
 ### How to Use It
 
-1. **Set up your Yoga Book** — Open it in book posture (both screens in portrait
-   orientation, side by side). In Windows Settings → Display, make sure both screens
-   are set to Portrait orientation.
+1. **Set up your screens** — Make sure both screens are in portrait orientation and
+   positioned side by side. In Windows Settings → Display, set each to **Portrait**
+   and arrange them next to each other.
 2. **Launch the app** — Double-click the .exe. You'll see the library/splash screen.
 3. **Open a file** — Tap **"Open file…"** to pick a PDF or comic, or tap
    **"Choose folder"** to build a library from everything in that folder.
@@ -119,6 +137,14 @@ and reading progress are preserved across updates.
 </details>
 
 <details>
+<summary><strong>Can I use this on a regular single-screen laptop?</strong></summary>
+
+Yes — the app falls back to single-page mode automatically. You'll see one page at a
+time instead of a two-page spread. It works fine, but the dual-screen experience is
+where it really shines.
+</details>
+
+<details>
 <summary><strong>The app is already running — I can't open a second one</strong></summary>
 
 Only one instance of the app can run at a time. If you try to start a second one,
@@ -130,22 +156,29 @@ running.
 
 ## 🛠️ For Developers
 
-A dual-screen magazine & manga reader for the **Lenovo Yoga Book Gen 10**. Its two
-1800×2880 portrait displays are treated as a single open-book reading surface,
-rendering left/right pages as one cohesive two-page spread. Supports PDF and
-CBZ/CBR.
+A dual-screen document reader for Windows. Detects portrait displays and renders
+left/right pages as a cohesive two-page spread. Supports PDF, CBZ, and CBR.
 
 Built with **Electron + TypeScript**.
 
 ## Features
 
-- **Dual-screen spreads** — two 1800×2880 portrait displays treated as a single open-book reading surface, with proper centerfold handling, LTR/RTL support, and single-display fallback.
-- **Touch navigation** — tap left/right edges for prev/next, tap center for controls, swipe gestures, and keyboard shortcuts.
-- **Splash / library screen** — recent files and a folder-based library with collapsible sections (all collapsed by default), cached cover thumbnails, and folder picker.
-- **Reader overlay** — minimal control bar (prev/next, library, help, settings) with an expandable drawer for zoom presets, direction toggle, brightness control, and app settings. Auto-hides after inactivity.
+- **Dual-screen spreads** — two portrait displays treated as a single open-book
+  reading surface, with proper centerfold handling, LTR/RTL support, and
+  single-display fallback.
+- **Touch navigation** — tap left/right edges for prev/next, tap center for
+  controls, swipe gestures, and keyboard shortcuts.
+- **Splash / library screen** — recent files and a folder-based library with
+  collapsible sections (all collapsed by default), cached cover thumbnails, and
+  folder picker.
+- **Reader overlay** — minimal control bar (prev/next, library, help, settings)
+  with an expandable drawer for zoom presets, direction toggle, brightness control,
+  and app settings. Auto-hides after inactivity.
 - **Format support** — PDF, CBZ, and CBR (including RAR5).
-- **System backlight integration** — hardware brightness control and adaptive brightness toggle on Yoga Book hardware.
-- **Cover generation** — automatic PDF and comic cover thumbnails, cached to disk for instant loading.
+- **Hardware brightness** — uses Windows WMI brightness control when available;
+  falls back to an in-app software dim overlay on devices without it.
+- **Cover generation** — automatic PDF and comic cover thumbnails, cached to disk
+  for instant loading.
 
 ## Architecture
 
@@ -169,8 +202,9 @@ The hardware-independent decision logic lives in a pure, fully unit-tested core
 - **`navigation.ts`** — next/prev/jump with boundary clamping and resume-on-reopen.
 - **`aspect.ts`** — classifies pages as single / double-spread / spread-encoded
   from their dimensions, with a manual override.
-- **`placement.ts`** — assigns the two 1800×2880 monitors to left/right, detecting
-  single (folded) and ambiguous layouts.
+- **`placement.ts`** — detects portrait displays and assigns them to left/right
+  based on their x-position. Purely orientation-based — no hardcoded resolutions,
+  EDID strings, or device IDs.
 - **`state.ts`** — JSON state round-trip and the recent-files list.
 
 ## Scripts
@@ -184,10 +218,10 @@ npm run dev          # run the app in development (requires the Electron binary)
 npm run package      # build a portable Windows .exe + NSIS installer (electron-builder)
 ```
 
-## Windows quick start (Yoga Book, nothing installed)
+## Windows quick start (nothing installed)
 
-The Yoga Book Gen 10 runs Windows 11, which ships with `winget`, so you can set up
-the toolchain from PowerShell without downloading any installers by hand.
+Windows 11 ships with `winget`, so you can set up the toolchain from PowerShell
+without downloading any installers by hand.
 
 1. Install Node.js (includes `npm`) and Git:
 
@@ -217,9 +251,8 @@ the toolchain from PowerShell without downloading any installers by hand.
    ```
 
 The portable `.exe` under `dist\` needs no installation — copy it anywhere and run
-it. Open your Yoga Book in book posture (both built-in screens in portrait, side by
-side) before launching for the two-page spread; with one screen or in landscape
-orientation it falls back to single-page mode.
+it. Position two portrait screens side by side before launching for the two-page
+spread; with one screen or in landscape orientation it falls back to single-page mode.
 
 ## Run it like a normal app (no dev server)
 
@@ -241,15 +274,13 @@ Then either double-click the .exe, or make it easy to launch:
 - **Pin to taskbar/Start:** right-click the `.exe` → **Pin to taskbar** (or
   **Pin to Start**).
 
-You only need to re-run `npm run package` after pulling new changes. Hold the device
-in book posture (two side-by-side portrait screens) before launching for the
-two-page spread.
+You only need to re-run `npm run package` after pulling new changes.
 
 ## Status
 
 The pure-logic core is complete and unit-tested (57 tests). The Electron
 rendering/window layer is implemented and type-checks/builds, but is best verified
-on the actual Yoga Book hardware (two 1800×2880 Windows monitors), which the CI
+on actual dual-screen hardware (two portrait Windows displays), which the CI
 environment cannot provide.
 
 **Test coverage** (`npm test -- --coverage`) currently targets `src/core/` only.
