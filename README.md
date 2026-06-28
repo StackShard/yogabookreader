@@ -11,16 +11,17 @@ a magazine or paperback.
 
 The app is free and open source. No ads, no tracking, no data collection.
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X3X4228M3H)
-
-*Did you love this? Click a link, buy me a coffee. Not a subscription, just a one-time thanks.*
-
 > **Backstory** — This project was born out of the Lenovo Yoga Book Gen 10. It has
 > two beautiful 1800×2880 portrait screens that are practically begging to be used as
 > a book, but no reader app treated them as a two-page spread. So I built one. As it
 > turns out, the approach is entirely device-agnostic: if your laptop or tablet has
 > two portrait screens side by side, it'll work. That includes the Yoga Book Gen 9,
 > the Surface Neo (RIP), and even a desktop with two rotated monitors.
+
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X3X4228M3H)
+
+*Do you love this? Click a link, buy me a coffee. Not a subscription, just a one-time thanks.*
 
 ### Will it work on my device?
 
