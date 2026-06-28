@@ -2,8 +2,8 @@
   "name": "yogabookreader",
   "version": "1.0.0",
   "description": "Dual-screen magazine/manga reader for the Lenovo Yoga Book Gen 10",
-  "author": "",
-  "license": "MIT",
+  "author": "StackShard",
+  "license": "CC-BY-NC-SA-4.0",
   "main": "out/main/main.js",
   "scripts": {
     "dev": "electron-vite dev",

@@ -1,5 +1,131 @@
 # Yoga Book Reader
 
+## 📖 For Readers
+
+### What is Yoga Book Reader?
+
+Yoga Book Reader turns your **Lenovo Yoga Book Gen 10** into a two-screen book. It
+displays PDFs, manga (CBZ), and comics (CBR) across both 1800×2880 portrait screens
+as a seamless two-page spread — like reading an open magazine or book. One screen
+shows the left page, the other shows the right page.
+
+The app is free and open source. No ads, no tracking, no data collection.
+
+### Download & Run
+
+1. Go to the **[Releases page](https://github.com/StackShard/yogabookreader/releases)**
+2. Download the latest `YogaBookReader-1.0.0-portable.exe`
+3. Double-click to run — no installation needed
+
+You can also download the **installer** version (`YogaBookReader-1.0.0-setup-x64.exe`)
+if you prefer a traditional Start menu entry and desktop shortcut.
+
+### ⚠️ Windows SmartScreen Warning
+
+When you first run the app, Windows may show a blue dialog:
+
+> **Windows protected your PC**
+>
+> Microsoft Defender SmartScreen prevented an unrecognized app from starting.
+> Running this app might put your PC at risk.
+
+**This is normal.** Here's what to do:
+
+1. Click **More info** (the small link below the warning text)
+2. Click **Run anyway**
+
+Why does this happen? The app is **not code-signed** — code signing certificates
+cost hundreds of dollars per year, which isn't practical for an independent open
+source project. Over time, as more people use the app safely, Microsoft's
+reputation system learns to trust it and the warning stops appearing.
+
+**To verify the file is genuine:** You can check the SHA-256 hash matches the
+value posted in the release notes:
+
+```powershell
+Get-FileHash .\YogaBookReader-1.0.0-portable.exe -Algorithm SHA256
+```
+
+### How to Use It
+
+1. **Set up your Yoga Book** — Open it in book posture (both screens in portrait
+   orientation, side by side). In Windows Settings → Display, make sure both screens
+   are set to Portrait orientation.
+2. **Launch the app** — Double-click the .exe. You'll see the library/splash screen.
+3. **Open a file** — Tap **"Open file…"** to pick a PDF or comic, or tap
+   **"Choose folder"** to build a library from everything in that folder.
+4. **Navigate pages**:
+   - **Tap the left edge** of either screen → previous page
+   - **Tap the right edge** of either screen → next page
+   - **Swipe** left or right to turn pages
+   - **Tap the center** of the screen → show/hide controls
+5. **Use the controls** — The overlay bar has prev/next, library, help, and a
+   settings drawer with zoom, reading direction, and brightness.
+
+**Keyboard shortcuts** (when connected):
+- **Left/Right arrow keys** — previous/next page
+- **F** or **F11** — toggle fullscreen
+- **Escape** — close overlay or exit fullscreen
+
+### FAQ
+
+<details>
+<summary><strong>Nothing happens when I double-click the .exe</strong></summary>
+
+Your antivirus may be blocking it. Temporarily disable real-time protection and try
+again. If that works, add the .exe to your antivirus exclusion list. You can also
+run it from PowerShell to see any error output:
+
+```powershell
+.\YogaBookReader-1.0.0-portable.exe
+```
+</details>
+
+<details>
+<summary><strong>Only one screen shows the app — the other is black</strong></summary>
+
+Both screens need to be in **portrait orientation** (not landscape). Go to
+Windows Settings → Display, select each screen, and set Display orientation to
+**Portrait**. The app detects portrait screens automatically. If only one screen
+is connected, the app falls back to single-page mode.
+</details>
+
+<details>
+<summary><strong>The file won't open / shows an error</strong></summary>
+
+Supported formats: **PDF**, **CBZ** (ZIP-based comic), and **CBR** (RAR-based comic,
+RAR5 format only). Password-protected PDFs are not supported. If a file is corrupt
+or incomplete, you'll see an error message explaining the problem.
+</details>
+
+<details>
+<summary><strong>Where are my settings and reading progress stored?</strong></summary>
+
+Everything is stored locally on your device in the app's user data folder. Nothing
+is sent over the internet. Your recent files list, reading position for each file,
+and preferences are saved automatically.
+</details>
+
+<details>
+<summary><strong>How do I update to a new version?</strong></summary>
+
+Check the [Releases page](https://github.com/StackShard/yogabookreader/releases)
+for new versions. Download the latest .exe and replace the old one. Your settings
+and reading progress are preserved across updates.
+</details>
+
+<details>
+<summary><strong>The app is already running — I can't open a second one</strong></summary>
+
+Only one instance of the app can run at a time. If you try to start a second one,
+it will silently close. Check your taskbar or system tray — the app may already be
+running.
+</details>
+
+---
+
+## 🛠️ For Developers
+
 A dual-screen magazine & manga reader for the **Lenovo Yoga Book Gen 10**. Its two
 1800×2880 portrait displays are treated as a single open-book reading surface,
 rendering left/right pages as one cohesive two-page spread. Supports PDF and
@@ -51,7 +177,7 @@ npm test             # run the core unit-test suite (vitest)
 npm run typecheck    # tsc --noEmit
 npm run build        # bundle main/preload/renderer (electron-vite) + typecheck
 npm run dev          # run the app in development (requires the Electron binary)
-npm run package      # build a portable Windows .exe (electron-builder)
+npm run package      # build a portable Windows .exe + NSIS installer (electron-builder)
 ```
 
 ## Windows quick start (Yoga Book, nothing installed)
@@ -77,14 +203,13 @@ the toolchain from PowerShell without downloading any installers by hand.
    > The first `npm install` downloads Electron's runtime (~100 MB). That's normal
    > on a regular network connection.
 
-3. Either run the app directly, or build a double-clickable portable executable:
+3. Either run the app directly, or build the distributable executables:
 
    ```powershell
    npm run dev        # launch the app in development
 
-   # ...or produce a standalone portable .exe (no installer):
+   # ...or produce portable .exe + NSIS installer:
    npm run package
-   .\dist\YogaBookReader-1.0.0-portable.exe
    ```
 
 The portable `.exe` under `dist\` needs no installation — copy it anywhere and run
@@ -93,15 +218,18 @@ spread; with one screen it falls back to single-page mode.
 
 ## Run it like a normal app (no dev server)
 
-`npm run dev` is only for development. For everyday use, build the portable
-executable once and launch that — no terminal, no dev server:
+`npm run dev` is only for development. For everyday use, build the distributable
+once and launch that — no terminal, no dev server:
 
 ```powershell
 npm run package
 ```
 
-This produces `dist\YogaBookReader-1.0.0-portable.exe`. Then either double-click it,
-or make it easy to launch:
+This produces:
+- `dist\YogaBookReader-1.0.0-portable.exe` — no-install portable
+- `dist\YogaBookReader-1.0.0-setup-x64.exe` — traditional installer
+
+Then either double-click the .exe, or make it easy to launch:
 
 - **Desktop shortcut:** in File Explorer, right-click the `.exe` →
   **Show more options** → **Send to** → **Desktop (create shortcut)**.

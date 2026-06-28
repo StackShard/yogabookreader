@@ -11,6 +11,14 @@ win:
     - target: portable
       arch:
         - x64
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: YogaBookReader-${version}-setup-${arch}.exe
 portable:
   artifactName: YogaBookReader-${version}-portable.exe
 # Portable target: no installer, no registry entries, single .exe (PRD §Packaging).
+# NSIS target: traditional installer with Start menu entries and uninstaller.
