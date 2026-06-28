@@ -1,0 +1,3 @@
+Place the application icon here as icon.ico (256x256 recommended).
+electron-builder uses this directory for build resources.
+Without it, the packaged .exe defaults to Electron's generic icon.

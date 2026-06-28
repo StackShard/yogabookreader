@@ -42,6 +42,7 @@ import { fileUrl as coverUrl } from './protocol.js';
 import { currentPlacement, loadPage, type ReaderPage, type ReaderWindow } from './windows.js';
 import { log, logError } from './log.js';
 import {
+  clearRecentFiles,
   getFileState,
   getLibraryCache,
   getRecentFiles,
@@ -117,6 +118,9 @@ export class ReaderController {
         coverThumbnailPath: f.coverThumbnailPath,
       })),
     );
+    ipcMain.on(RendererToMain.clearRecentFiles, () => {
+      clearRecentFiles();
+    });
     ipcMain.handle(RendererToMain.getSettings, () => getSettings());
     ipcMain.handle(RendererToMain.getLibrary, () => this.getLibrary());
     ipcMain.handle(RendererToMain.getLibraryCached, () => this.getLibraryCached());
@@ -428,21 +432,37 @@ export class ReaderController {
   }
 
   /**
-   * Apply a manual spread-encoding override (PRD US#22): persist it and reopen
-   * the document so its pages are re-classified with the new setting.
+   * Apply a manual spread-encoding override (PRD US#22): persist it and reclassify
+   * the open document in-place so pages are re-built without re-reading the file.
    */
   private async setSpreadEncoded(value: boolean | undefined): Promise<void> {
     if (!this.session) return;
-    const filePath = this.session.describe().filePath;
-    const existing = getFileState(filePath);
+    const info = this.session.describe();
+    const existing = getFileState(info.filePath);
     saveFileState({
-      filePath,
+      filePath: info.filePath,
       lastPage: existing?.lastPage ?? this.session.anchorPage,
       readingDirection: existing?.readingDirection ?? this.session.readingDirection,
-      zoomPreset: existing?.zoomPreset ?? this.session.describe().zoomPreset,
+      zoomPreset: existing?.zoomPreset ?? info.zoomPreset,
       isSpreadEncoded: value,
     });
-    await this.openDocument(filePath);
+
+    // Reclassify in the background without re-reading the file.
+    const token = ++this.openToken;
+    this.broadcastStatus('Reclassifying pages…');
+    try {
+      const result =
+        info.type === 'pdf'
+          ? await classifyPdf(info.filePath, value)
+          : await classifyComicImages(this.session.imagePaths ?? [], value);
+      if (token !== this.openToken || !this.session) return;
+      this.session.setSpreadEncoded(result.isSpreadEncoded, result.pageAspects);
+      this.persistAndRender();
+    } catch (err) {
+      logError('reclassify failed:', (err as Error).message);
+    } finally {
+      if (token === this.openToken) this.broadcastStatus(null);
+    }
   }
 
   private toggleDirection(): void {

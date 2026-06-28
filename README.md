@@ -104,7 +104,11 @@ two-page spread.
 
 ## Status
 
-The pure-logic core is complete and unit-tested (54 tests). The Electron
+The pure-logic core is complete and unit-tested (57 tests). The Electron
 rendering/window layer is implemented and type-checks/builds, but is best verified
 on the actual Yoga Book hardware (two 1800×2880 Windows monitors), which the CI
 environment cannot provide.
+
+**Test coverage** (`npm test -- --coverage`) currently targets `src/core/` only.
+The main process and renderer modules rely on real Electron APIs or the DOM and
+are exercised manually on hardware rather than mocked in CI.

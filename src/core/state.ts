@@ -166,3 +166,8 @@ export function upsertRecentFile(
   const withoutDup = recentFiles.filter((f) => f.filePath !== entry.filePath);
   return [entry, ...withoutDup].slice(0, MAX_RECENT_FILES);
 }
+
+/** Return an empty recent-files list — used when the user clears the list. */
+export function clearRecentFiles(): RecentFile[] {
+  return [];
+}

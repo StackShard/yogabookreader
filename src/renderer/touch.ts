@@ -75,7 +75,7 @@ export function attachNavigation(
         cb.onPrev();
         break;
       case ' ':
-        cb.onCenter();
+        cb.onNext();
         break;
     }
   };

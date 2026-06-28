@@ -185,8 +185,16 @@ export class ControlOverlay {
 
   private attachSwipeUp(): void {
     let startY = 0;
-    this.root.addEventListener('pointerdown', (e) => (startY = e.clientY));
-    this.root.addEventListener('pointerup', (e) => {
+    let tracking = false;
+    this.root.addEventListener('pointerdown', (e) => {
+      startY = e.clientY;
+      tracking = true;
+    });
+    // Listen on window so the swipe completes even if the finger leaves the
+    // overlay element before lifting (common with edge-to-edge gestures).
+    window.addEventListener('pointerup', (e) => {
+      if (!tracking) return;
+      tracking = false;
       if (startY - e.clientY > 60) this.setExpanded(true);
       else if (e.clientY - startY > 60) this.setExpanded(false);
     });

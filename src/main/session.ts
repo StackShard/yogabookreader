@@ -131,6 +131,11 @@ export class ReaderSession {
     return this.model.readingDirection;
   }
 
+  /** Comic image paths (undefined for PDFs). Used to reclassify in-place. */
+  get imagePaths(): string[] | undefined {
+    return this.init.imagePaths;
+  }
+
   /** Resolve an abstract screen slot to a concrete render target. */
   private resolve(content: ScreenContent | null): RenderTarget {
     if (!content) return { kind: 'blank' };
