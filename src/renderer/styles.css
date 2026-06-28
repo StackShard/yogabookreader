@@ -227,18 +227,38 @@ body {
   background: var(--accent-press);
 }
 
-/* Expanded drawer: a vertical stack of labelled sections. */
-.overlay-expanded {
-  display: none;
-  margin-bottom: 14px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+.overlay-btn-more {
+  position: relative;
 }
 
-.overlay.expanded .overlay-expanded {
+.overlay.expanded .overlay-btn-more {
+  background: var(--accent-press);
+}
+
+/* Expanded drawer: a vertical stack of labelled sections. */
+.overlay-expanded {
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 1px solid transparent;
+  transition:
+    max-height 0.25s ease,
+    opacity 0.2s ease,
+    margin-bottom 0.2s ease,
+    padding-bottom 0.2s ease;
+}
+
+.overlay.expanded .overlay-expanded {
+  max-height: 800px;
+  opacity: 1;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .overlay-section {
@@ -502,7 +522,8 @@ body {
   padding-left: 4px;
 }
 
-.splash-actionbar .primary-btn {
+.splash-actionbar .primary-btn,
+.splash-actionbar .ghost-btn {
   flex: 1;
 }
 
