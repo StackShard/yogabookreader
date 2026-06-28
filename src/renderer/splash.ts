@@ -6,6 +6,7 @@
  * exit. Role-aware: in dual mode only the primary screen shows the gallery.
  */
 
+import type { LibraryGroup, WindowRole } from '../shared/ipc.js';
 import {
   renderGallery,
   renderLibrary,
@@ -13,7 +14,6 @@ import {
 } from './library.js';
 import { onCoverProgress } from './cover.js';
 import { setStatus } from './toast.js';
-import type { WindowRole } from '../shared/ipc.js';
 
 function readRole(): WindowRole {
   const role = new URLSearchParams(location.search).get('role');
@@ -73,19 +73,31 @@ async function main(): Promise<void> {
   }
 
   const recent = await reader.getRecentFiles().catch(() => []);
-  renderGallery(
-    document.getElementById('recent') as HTMLElement,
-    recent.map(recentToGalleryItem),
-    openDocument,
-  );
+  const recentEl = document.getElementById('recent') as HTMLElement;
+  function refreshRecent(): void {
+    renderGallery(recentEl, recent.map(recentToGalleryItem), openDocument);
+  }
+  refreshRecent();
+
+  document.getElementById('clear-recent')?.addEventListener('click', () => {
+    reader.clearRecentFiles();
+    recent.length = 0;
+    refreshRecent();
+  });
 
   await setFolderLabel();
   // Show the cached library instantly, then refresh from a fresh scan.
+  // Only re-render if the fresh data actually differs (avoids a jarring DOM
+  // replacement while the user is browsing the library).
   const cached = await reader.getLibraryCached().catch(() => []);
+  let lastGroups: LibraryGroup[] = cached;
   if (cached.length > 0) renderLibrary(libraryEl, cached, openDocument);
   else setStatus('Scanning folder…');
   const fresh = await reader.getLibrary().catch(() => []);
-  renderLibrary(libraryEl, fresh, openDocument);
+  if (JSON.stringify(fresh) !== JSON.stringify(lastGroups)) {
+    lastGroups = fresh;
+    renderLibrary(libraryEl, fresh, openDocument);
+  }
   if (cached.length === 0) setStatus(null);
 }
 

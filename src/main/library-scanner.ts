@@ -1,15 +1,14 @@
 /**
- * Library folder scanning & watching (PRD §File Management, US#18).
+ * Library folder scanning (PRD §File Management, US#18).
  *
- * Recursively scans a root folder for supported documents and watches it for
- * changes via chokidar. Cover thumbnails are generated lazily by the renderer
+ * Recursively scans a root folder for supported documents and reports them
+ * grouped by sub-folder. Cover thumbnails are generated lazily by the renderer
  * (which already has the rendering pipeline); this module tracks the catalogue
  * and the on-disk thumbnail cache location.
  */
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import chokidar, { type FSWatcher } from 'chokidar';
 import { app } from 'electron';
 import { SUPPORTED_EXTENSIONS, detectType } from './file-loader.js';
 import type { DocumentType } from '../shared/ipc.js';
@@ -65,21 +64,4 @@ export async function scanFolder(root: string): Promise<LibraryEntry[]> {
   await walk(root);
   results.sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { numeric: true }));
   return results;
-}
-
-/**
- * Watch a root folder, invoking `onChange` (debounced by chokidar) whenever the
- * set of supported files changes. Returns the watcher so it can be closed.
- */
-export function watchFolder(root: string, onChange: () => void): FSWatcher {
-  const watcher = chokidar.watch(root, {
-    ignoreInitial: true,
-    depth: 99,
-    awaitWriteFinish: { stabilityThreshold: 500 },
-  });
-  const handle = (file: string): void => {
-    if (SUPPORTED_EXTENSIONS.includes(path.extname(file).toLowerCase())) onChange();
-  };
-  watcher.on('add', handle).on('unlink', handle);
-  return watcher;
 }

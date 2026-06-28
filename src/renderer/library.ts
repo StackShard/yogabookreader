@@ -66,7 +66,7 @@ export function renderGallery(
   for (const item of items) container.appendChild(tile(item, onOpen));
 }
 
-/** Render the library as one section (heading + grid) per sub-folder. */
+/** Render the library as one collapsible section per sub-folder. */
 export function renderLibrary(
   container: HTMLElement,
   groups: LibraryGroup[],
@@ -81,15 +81,34 @@ export function renderLibrary(
     return;
   }
   for (const group of groups) {
-    const heading = document.createElement('h3');
-    heading.className = 'group-heading';
-    heading.textContent = group.folder;
+    const section = document.createElement('div');
+    section.className = 'lib-section';
 
+    const header = document.createElement('button');
+    header.className = 'lib-section-header';
+    const count = document.createElement('span');
+    count.className = 'lib-section-count';
+    count.textContent = String(group.items.length);
+    const chevron = document.createElement('span');
+    chevron.className = 'lib-section-chevron';
+    chevron.textContent = '▾';
+    header.append(group.folder, count, chevron);
+
+    const body = document.createElement('div');
+    body.className = 'lib-section-body';
     const grid = document.createElement('div');
     grid.className = 'gallery';
     for (const item of group.items) grid.appendChild(tile(libraryToGalleryItem(item), onOpen));
+    body.appendChild(grid);
 
-    container.append(heading, grid);
+    header.addEventListener('click', () => {
+      const collapsed = body.classList.toggle('collapsed');
+      chevron.textContent = collapsed ? '▸' : '▾';
+      header.classList.toggle('collapsed', collapsed);
+    });
+
+    section.append(header, body);
+    container.appendChild(section);
   }
 }
 

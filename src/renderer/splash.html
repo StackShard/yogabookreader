@@ -3,6 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <!--
+      CSP: yreader: = custom protocol for local files.
+      unsafe-eval = needed for pdf.js (uses new Function internally).
+      unsafe-inline = needed for Vite dev-server style injection.
+      ws: = Vite HMR in development; harmless in production.
+    -->
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self' 'unsafe-inline' yreader: blob: data: ws:; img-src 'self' yreader: blob: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; worker-src 'self' blob:;"
@@ -17,7 +23,7 @@
       </header>
       <main class="splash-scroll">
         <section>
-          <h2>Recent</h2>
+          <h2>Recent <button id="clear-recent" class="ghost-btn" style="font-size:14px;min-height:auto;padding:6px 14px;margin-left:12px;vertical-align:middle">Clear</button></h2>
           <div id="recent" class="gallery"></div>
         </section>
         <section>

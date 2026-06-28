@@ -84,3 +84,9 @@ export function recordRecentFile(entry: RecentFile): void {
   state.recentFiles = upsertRecentFile(state.recentFiles, entry);
   save(state);
 }
+
+export function clearRecentFiles(): void {
+  const state = load();
+  state.recentFiles = [];
+  save(state);
+}

@@ -13,6 +13,12 @@ import { FileLoadError } from './file-loader.js';
 // pdf.js v4 is ESM-only. The main-process bundle is CommonJS, so it must be
 // pulled in via a dynamic import() (require() of an .mjs throws ERR_REQUIRE_ESM).
 // The legacy build runs under Node without a DOM. Cache the module promise.
+//
+// Note: this means the pdf.js worker blob is fetched twice — once by the main
+// process (for metadata) and once by the renderer (for painting). The cost is
+// paid once at startup and is acceptable given the single-purpose nature of the
+// app; sharing a single pdf.js instance between the main and renderer processes
+// is not possible in Electron's multi-process architecture.
 type PdfjsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
 let pdfjsPromise: Promise<PdfjsModule> | null = null;
 function loadPdfjs(): Promise<PdfjsModule> {

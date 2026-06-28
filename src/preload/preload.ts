@@ -59,6 +59,7 @@ const bridge: ReaderBridge = {
 
   getRecentFiles: (): Promise<RecentFileView[]> =>
     ipcRenderer.invoke(RendererToMain.getRecentFiles),
+  clearRecentFiles: () => ipcRenderer.send(RendererToMain.clearRecentFiles),
   getSettings: () => ipcRenderer.invoke(RendererToMain.getSettings),
   getLibrary: () => ipcRenderer.invoke(RendererToMain.getLibrary),
   getLibraryCached: () => ipcRenderer.invoke(RendererToMain.getLibraryCached),
