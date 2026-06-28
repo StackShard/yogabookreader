@@ -1,6 +1,7 @@
 # Yoga Book Reader
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X3X4228M3H)
+*Saved you time? Buy me a coffee. Not a subscription, just a one-time thanks.*
 
 ## 📖 For Readers
 
