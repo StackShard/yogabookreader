@@ -116,8 +116,10 @@ is connected, the app falls back to single-page mode.
 <summary><strong>The file won't open / shows an error</strong></summary>
 
 Supported formats: **PDF**, **CBZ** (ZIP-based comic), and **CBR** (RAR-based comic,
-RAR5 format only). Password-protected PDFs are not supported. If a file is corrupt
-or incomplete, you'll see an error message explaining the problem.
+RAR5 format only). Password-protected PDFs are not supported.
+
+**EPUB is not supported yet** — it's on the radar for a future release.
+If a file is corrupt or incomplete, you'll see an error message explaining the problem.
 </details>
 
 <details>
