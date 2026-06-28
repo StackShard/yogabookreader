@@ -7,6 +7,16 @@ CBZ/CBR.
 
 Built with **Electron + TypeScript**. See the PRD for full product goals.
 
+## Features
+
+- **Dual-screen spreads** — two 1800×2880 portrait displays treated as a single open-book reading surface, with proper centerfold handling, LTR/RTL support, and single-display fallback.
+- **Touch navigation** — tap left/right edges for prev/next, tap center for controls, swipe gestures, and keyboard shortcuts.
+- **Splash / library screen** — recent files and a folder-based library with collapsible sections (all collapsed by default), cached cover thumbnails, and folder picker.
+- **Reader overlay** — minimal control bar (prev/next, library, help, settings) with an expandable drawer for zoom presets, direction toggle, brightness control, and app settings. Auto-hides after inactivity.
+- **Format support** — PDF, CBZ, and CBR (including RAR5).
+- **System backlight integration** — hardware brightness control and adaptive brightness toggle on Yoga Book hardware.
+- **Cover generation** — automatic PDF and comic cover thumbnails, cached to disk for instant loading.
+
 ## Architecture
 
 The hardware-independent decision logic lives in a pure, fully unit-tested core
