@@ -1,9 +1,5 @@
 # Yoga Book Reader
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X3X4228M3H)
-
-*Saved you time? Click a link, buy me a coffee. Not a subscription, just a one-time thanks.*
-
 ## 📖 For Readers
 
 ### What is Yoga Book Reader?
@@ -14,6 +10,10 @@ as a seamless two-page spread — like reading an open magazine or book. One scr
 shows the left page, the other shows the right page.
 
 The app is free and open source. No ads, no tracking, no data collection.
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X3X4228M3H)
+
+*Did you love this? Click a link, buy me a coffee. Not a subscription, just a one-time thanks.*
 
 ### Download & Run
 
