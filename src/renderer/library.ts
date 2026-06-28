@@ -91,11 +91,11 @@ export function renderLibrary(
     count.textContent = String(group.items.length);
     const chevron = document.createElement('span');
     chevron.className = 'lib-section-chevron';
-    chevron.textContent = '▾';
+    chevron.textContent = '▸';
     header.append(group.folder, count, chevron);
 
     const body = document.createElement('div');
-    body.className = 'lib-section-body';
+    body.className = 'lib-section-body collapsed';
     const grid = document.createElement('div');
     grid.className = 'gallery';
     for (const item of group.items) grid.appendChild(tile(libraryToGalleryItem(item), onOpen));
@@ -106,6 +106,7 @@ export function renderLibrary(
       chevron.textContent = collapsed ? '▸' : '▾';
       header.classList.toggle('collapsed', collapsed);
     });
+    header.classList.add('collapsed');
 
     section.append(header, body);
     container.appendChild(section);

@@ -40,6 +40,7 @@ export class ControlOverlay {
   private expanded = false;
   private hovered = false;
   private adaptiveDisabled: boolean;
+  private moreButton!: HTMLButtonElement;
 
   constructor(
     private readonly cb: OverlayCallbacks,
@@ -73,12 +74,13 @@ export class ControlOverlay {
     // and a manual hide on the far right.
     const minimal = document.createElement('div');
     minimal.className = 'overlay-bar';
+    this.moreButton = this.button('⚙ More', () => this.toggleExpanded(), 'overlay-btn-more');
     minimal.append(
       this.button('‹ Prev', () => this.cb.onPrev(), 'overlay-btn-nav'),
       this.button('Next ›', () => this.cb.onNext(), 'overlay-btn-nav'),
       this.button('▦ Library', () => this.cb.onOpenLibrary()),
       this.button('? Help', () => this.cb.onShowHelp()),
-      this.button('⚙ More', () => this.toggleExpanded()),
+      this.moreButton,
       this.button('⌄ Hide', () => this.hide()),
     );
 
@@ -219,6 +221,7 @@ export class ControlOverlay {
   private setExpanded(value: boolean): void {
     this.expanded = value;
     this.root.classList.toggle('expanded', value);
+    this.moreButton.textContent = value ? '⚙ Less ⌃' : '⚙ More';
     this.poke();
   }
 
@@ -236,6 +239,7 @@ export class ControlOverlay {
   private setExpandedSilently(value: boolean): void {
     this.expanded = value;
     this.root.classList.toggle('expanded', value);
+    this.moreButton.textContent = value ? '⚙ Less ⌃' : '⚙ More';
   }
 
   /** Reset the inactivity timer that auto-hides the overlay (paused only while touched). */
