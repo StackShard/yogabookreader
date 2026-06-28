@@ -50,8 +50,8 @@ verified on a Yoga Book Gen 10:
 1. Connect both screens in portrait orientation
 2. `npm run dev` for live development, or `npm run package` to test the built .exe
 3. Test with PDF, CBZ, and CBR files
-4. Test single-screen fallback by folding the device or disconnecting one display
-5. Test display hot-plug by reconnecting displays while the app is running
+4. Test single-screen fallback by folding the device or switching one display to landscape
+5. Test display detection by changing screen orientation while the app is running
 
 ## License
 

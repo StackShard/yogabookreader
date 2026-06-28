@@ -131,7 +131,7 @@ A dual-screen magazine & manga reader for the **Lenovo Yoga Book Gen 10**. Its t
 rendering left/right pages as one cohesive two-page spread. Supports PDF and
 CBZ/CBR.
 
-Built with **Electron + TypeScript**. See the PRD for full product goals.
+Built with **Electron + TypeScript**.
 
 ## Features
 
@@ -213,8 +213,9 @@ the toolchain from PowerShell without downloading any installers by hand.
    ```
 
 The portable `.exe` under `dist\` needs no installation — copy it anywhere and run
-it. Plug in both Yoga Book screens (portrait) before launching for the two-page
-spread; with one screen it falls back to single-page mode.
+it. Open your Yoga Book in book posture (both built-in screens in portrait, side by
+side) before launching for the two-page spread; with one screen or in landscape
+orientation it falls back to single-page mode.
 
 ## Run it like a normal app (no dev server)
 
