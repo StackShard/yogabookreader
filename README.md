@@ -1,5 +1,7 @@
 # Yoga Book Reader
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X3X4228M3H)
+
 ## 📖 For Readers
 
 ### What is Yoga Book Reader?
