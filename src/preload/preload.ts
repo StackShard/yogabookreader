@@ -33,6 +33,8 @@ const bridge: ReaderBridge = {
     ipcRenderer.on(MainToRenderer.fullScreenChanged, (_e, value: boolean) => cb(value)),
   onSetDim: (cb: (level: number | null) => void) =>
     ipcRenderer.on(MainToRenderer.setDim, (_e, level: number | null) => cb(level)),
+  onStatus: (cb: (message: string | null) => void) =>
+    ipcRenderer.on(MainToRenderer.status, (_e, message: string | null) => cb(message)),
 
   ready: () => ipcRenderer.send(RendererToMain.ready),
   openFile: (filePath: string) => ipcRenderer.send(RendererToMain.openFile, filePath),
@@ -59,6 +61,7 @@ const bridge: ReaderBridge = {
     ipcRenderer.invoke(RendererToMain.getRecentFiles),
   getSettings: () => ipcRenderer.invoke(RendererToMain.getSettings),
   getLibrary: () => ipcRenderer.invoke(RendererToMain.getLibrary),
+  getLibraryCached: () => ipcRenderer.invoke(RendererToMain.getLibraryCached),
   pickFolder: () => ipcRenderer.invoke(RendererToMain.pickFolder),
   getResumeInfo: () => ipcRenderer.invoke(RendererToMain.getResumeInfo),
   getCachedCover: (filePath: string) => ipcRenderer.invoke(RendererToMain.getCachedCover, filePath),

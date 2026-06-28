@@ -115,17 +115,19 @@ export async function extractFirstImage(
     return out;
   }
 
-  // CBR: extract all (node-unrar-js has no single-entry API), keep the first image.
+  // CBR: list entries, then extract only the first image (not the whole archive).
   const data = await fs.readFile(filePath);
   const extractor = await createExtractorFromData({
     data: data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
   });
-  const files = [...extractor.extract().files]
-    .filter((f) => f.extraction && isImageEntry(f.fileHeader.name))
-    .sort((a, b) => naturalCompare(a.fileHeader.name, b.fileHeader.name));
-  const first = files[0];
-  if (!first || !first.extraction) return null;
-  const out = path.join(dir, path.basename(first.fileHeader.name));
-  await fs.writeFile(out, first.extraction);
+  const firstName = [...extractor.getFileList().fileHeaders]
+    .filter((h) => !h.flags.directory && isImageEntry(h.name))
+    .map((h) => h.name)
+    .sort(naturalCompare)[0];
+  if (!firstName) return null;
+  const file = [...extractor.extract({ files: [firstName] }).files][0];
+  if (!file || !file.extraction) return null;
+  const out = path.join(dir, path.basename(firstName));
+  await fs.writeFile(out, file.extraction);
   return out;
 }

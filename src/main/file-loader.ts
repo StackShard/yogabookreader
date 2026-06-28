@@ -31,11 +31,8 @@ export function detectType(filePath: string): DocumentType | null {
   }
 }
 
-/** A comic loaded into a temp dir, with measured pages classified. */
-export interface LoadedComic {
-  type: 'cbz' | 'cbr';
-  imagePaths: string[];
-  totalPages: number;
+/** Result of classifying a comic's already-extracted images. */
+export interface ComicClassification {
   pageAspects: AspectClass[];
   isSpreadEncoded: boolean;
 }
@@ -60,15 +57,11 @@ async function assertReadable(filePath: string): Promise<void> {
 }
 
 /**
- * Load a comic archive: extract its images, measure them, and classify the
- * document (centerfold / spread-encoded detection). `override` forces the
- * spread-encoding decision when the user has set it for this file.
+ * Extract a comic archive to its temp dir and return the page image paths.
+ * (Required before anything can render; the measure/classify step is separate so
+ * the document can open before it runs.)
  */
-export async function loadComic(
-  filePath: string,
-  kind: 'cbz' | 'cbr',
-  override?: boolean,
-): Promise<LoadedComic> {
+export async function loadComicImages(filePath: string, kind: 'cbz' | 'cbr'): Promise<string[]> {
   await assertReadable(filePath);
 
   let imagePaths: string[];
@@ -89,20 +82,22 @@ export async function loadComic(
       message: 'Archive contains no readable images.',
     });
   }
+  return imagePaths;
+}
 
+/**
+ * Measure the extracted images and classify the document (centerfold /
+ * spread-encoded). Run off the open path; `override` forces the decision.
+ */
+export async function classifyComicImages(
+  imagePaths: string[],
+  override?: boolean,
+): Promise<ComicClassification> {
   const dims: PageDimensions[] = [];
   for (const imagePath of imagePaths) {
     const size = await imageSize(imagePath);
     // Default to a portrait single page if a format is unrecognized.
     dims.push(size ?? { width: 1000, height: 1600 });
   }
-
-  const { isSpreadEncoded, pageAspects } = classifyDocument(dims, override);
-  return {
-    type: kind,
-    imagePaths,
-    totalPages: imagePaths.length,
-    pageAspects,
-    isSpreadEncoded,
-  };
+  return classifyDocument(dims, override);
 }

@@ -13,6 +13,7 @@ import {
   BRIGHTNESS_MAX,
   BRIGHTNESS_MIN,
   DEFAULT_SETTINGS,
+  type AspectClass,
   type DisplayMode,
   type ReadingDirection,
   type ZoomPreset,
@@ -29,10 +30,11 @@ import {
 } from '../shared/ipc.js';
 import {
   detectType,
-  loadComic,
+  loadComicImages,
+  classifyComicImages,
   FileLoadError,
 } from './file-loader.js';
-import { loadPdfMeta } from './pdf-meta.js';
+import { loadPdfPageCount, classifyPdf } from './pdf-meta.js';
 import { ReaderSession } from './session.js';
 import { scanFolder, thumbnailCacheDir } from './library-scanner.js';
 import { extractFirstImage, hashPath } from './cbz-extractor.js';
@@ -41,10 +43,12 @@ import { currentPlacement, loadPage, type ReaderPage, type ReaderWindow } from '
 import { log, logError } from './log.js';
 import {
   getFileState,
+  getLibraryCache,
   getRecentFiles,
   getSettings,
   recordRecentFile,
   saveFileState,
+  setLibraryCache,
   updateSettings,
 } from './state-store.js';
 import { setAdaptiveBrightness, setHardwareBrightness } from './brightness.js';
@@ -55,6 +59,8 @@ export class ReaderController {
   private windows: ReaderWindow[] = [];
   private windowFactory: () => ReaderWindow[] = () => [];
   private rebuilding = false;
+  /** Incremented per open; guards background classification against stale applies. */
+  private openToken = 0;
 
   setWindows(windows: ReaderWindow[]): void {
     this.windows = windows;
@@ -113,6 +119,7 @@ export class ReaderController {
     );
     ipcMain.handle(RendererToMain.getSettings, () => getSettings());
     ipcMain.handle(RendererToMain.getLibrary, () => this.getLibrary());
+    ipcMain.handle(RendererToMain.getLibraryCached, () => this.getLibraryCached());
     ipcMain.handle(RendererToMain.pickFolder, () => this.pickFolder());
     ipcMain.handle(RendererToMain.getResumeInfo, () => this.getResumeInfo());
     ipcMain.handle(RendererToMain.getCachedCover, (_e, fp: string) => this.getCachedCover(fp));
@@ -207,9 +214,21 @@ export class ReaderController {
       if (list) list.push(item);
       else groups.set(folder, [item]);
     }
-    return [...groups.entries()]
+    const result = [...groups.entries()]
       .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
       .map(([folder, items]) => ({ folder, items }));
+    setLibraryCache(root, result); // cache for an instant library next launch
+    return result;
+  }
+
+  /** The cached library from the last scan, if it matches the current folder. */
+  private getLibraryCached(): LibraryGroup[] {
+    const root = getSettings().rootFolder;
+    const cache = getLibraryCache();
+    if (root && cache && cache.rootFolder === root && Array.isArray(cache.groups)) {
+      return cache.groups as LibraryGroup[];
+    }
+    return [];
   }
 
   /** Let the user pick the library root folder; persist it and rescan. */
@@ -328,38 +347,20 @@ export class ReaderController {
     const zoomPreset = DEFAULT_SETTINGS.defaultZoomPreset;
     const override = fileState?.isSpreadEncoded;
     const displayMode = currentPlacement().mode === 'dual' ? 'dual' : 'single';
+    const displayName = path.basename(filePath, path.extname(filePath));
+    const token = ++this.openToken;
 
+    // Fast path: get just what's needed to open (page count for PDF, extracted
+    // images for comics). The expensive per-page classification runs in the
+    // background so the document appears immediately.
+    let totalPages: number;
+    let imagePaths: string[] | undefined;
     try {
       if (type === 'pdf') {
-        const meta = await loadPdfMeta(filePath, override);
-        this.session = new ReaderSession({
-          filePath,
-          displayName: path.basename(filePath, path.extname(filePath)),
-          type,
-          pdfPath: filePath,
-          totalPages: meta.totalPages,
-          pageAspects: meta.pageAspects,
-          isSpreadEncoded: meta.isSpreadEncoded,
-          readingDirection,
-          zoomPreset,
-          displayMode,
-          startPage: fileState?.lastPage,
-        });
+        totalPages = await loadPdfPageCount(filePath);
       } else {
-        const comic = await loadComic(filePath, type, override);
-        this.session = new ReaderSession({
-          filePath,
-          displayName: path.basename(filePath, path.extname(filePath)),
-          type,
-          imagePaths: comic.imagePaths,
-          totalPages: comic.totalPages,
-          pageAspects: comic.pageAspects,
-          isSpreadEncoded: comic.isSpreadEncoded,
-          readingDirection,
-          zoomPreset,
-          displayMode,
-          startPage: fileState?.lastPage,
-        });
+        imagePaths = await loadComicImages(filePath, type);
+        totalPages = imagePaths.length;
       }
     } catch (err) {
       this.failOpen(
@@ -370,19 +371,60 @@ export class ReaderController {
       return;
     }
 
-    this.pendingError = null;
-    const desc = this.session.describe();
-    log('loaded ok:', desc.totalPages, 'pages,', desc.spreadCount, 'spreads, mode =', displayMode);
-    recordRecentFile({
+    const provisional = provisionalClassification(totalPages, override);
+    this.session = new ReaderSession({
       filePath,
-      displayName: desc.displayName,
-      lastPage: this.session.anchorPage,
-      lastReadAt: Date.now(),
+      displayName,
+      type,
+      pdfPath: type === 'pdf' ? filePath : undefined,
+      imagePaths,
+      totalPages,
+      pageAspects: provisional.pageAspects,
+      isSpreadEncoded: provisional.isSpreadEncoded,
+      readingDirection,
+      zoomPreset,
+      displayMode,
+      startPage: fileState?.lastPage,
     });
+    this.pendingError = null;
+    log('opened (provisional):', totalPages, 'pages, mode =', displayMode);
+    recordRecentFile({ filePath, displayName, lastPage: this.session.anchorPage, lastReadAt: Date.now() });
 
-    // Bring every window to the reader page; each will request its content via
-    // `ready` once loaded (see onRendererReady).
+    // Bring every window to the reader page; each requests content via `ready`.
     this.navigateAll('reader');
+
+    // Refine centerfold / spread-encoded classification off the open path.
+    this.broadcastStatus('Analyzing pages…');
+    void this.classifyInBackground(token, filePath, type, imagePaths, override);
+  }
+
+  /** Run the full page classification and apply it if still the current document. */
+  private async classifyInBackground(
+    token: number,
+    filePath: string,
+    type: 'pdf' | 'cbz' | 'cbr',
+    imagePaths: string[] | undefined,
+    override: boolean | undefined,
+  ): Promise<void> {
+    try {
+      const result =
+        type === 'pdf'
+          ? await classifyPdf(filePath, override)
+          : await classifyComicImages(imagePaths ?? [], override);
+      if (token !== this.openToken || !this.session) return; // superseded
+      this.session.setSpreadEncoded(result.isSpreadEncoded, result.pageAspects);
+      this.broadcastRender();
+    } catch (err) {
+      logError('background classify failed:', (err as Error).message);
+    } finally {
+      if (token === this.openToken) this.broadcastStatus(null);
+    }
+  }
+
+  private broadcastStatus(message: string | null): void {
+    for (const { window } of this.windows) {
+      if (!window.isDestroyed()) window.webContents.send(MainToRenderer.status, message);
+    }
   }
 
   /**
@@ -498,4 +540,22 @@ export class ReaderController {
   allWindows(): BrowserWindow[] {
     return this.windows.map((w) => w.window);
   }
+}
+
+/**
+ * A provisional classification used to open instantly: honour a saved
+ * spread-encoded override, otherwise treat every page as a normal single page
+ * (refined by the background pass).
+ */
+function provisionalClassification(
+  totalPages: number,
+  override: boolean | undefined,
+): { pageAspects: AspectClass[]; isSpreadEncoded: boolean } {
+  const spread = override === true;
+  return {
+    isSpreadEncoded: spread,
+    pageAspects: Array.from({ length: totalPages }, () =>
+      spread ? ('spread-encoded' as AspectClass) : ('single' as AspectClass),
+    ),
+  };
 }
