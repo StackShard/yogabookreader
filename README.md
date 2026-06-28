@@ -19,9 +19,10 @@ The app is free and open source. No ads, no tracking, no data collection.
 > the Surface Neo (RIP), and even a desktop with two rotated monitors.
 
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X3X4228M3H)
-
-*Do you love this? Click a link, buy me a coffee. Not a subscription, just a one-time thanks.*
+<p align="center">
+  <a href="https://ko-fi.com/X3X4228M3H"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support on Ko-fi"></a><br>
+  <sup><i>If this saved you time, buy me a coffee. Not a subscription, just a one-time thanks.</i></sup>
+</p>
 
 ### Will it work on my device?
 
