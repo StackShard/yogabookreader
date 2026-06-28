@@ -19,9 +19,27 @@ import type {
   RecentFile,
 } from '../core/types.js';
 
-const store = new Store<{ state: unknown }>({
+const store = new Store<{ state: unknown; libraryCache: unknown }>({
   name: 'state', // -> <userData>/state.json
 });
+
+/** Opaque cache of the last library scan, so the splash can show it instantly. */
+export interface LibraryCache {
+  rootFolder: string;
+  groups: unknown;
+}
+
+export function getLibraryCache(): LibraryCache | null {
+  const raw = store.get('libraryCache');
+  if (raw && typeof raw === 'object' && typeof (raw as LibraryCache).rootFolder === 'string') {
+    return raw as LibraryCache;
+  }
+  return null;
+}
+
+export function setLibraryCache(rootFolder: string, groups: unknown): void {
+  store.set('libraryCache', { rootFolder, groups });
+}
 
 function load(): PersistedState {
   try {

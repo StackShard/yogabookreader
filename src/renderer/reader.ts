@@ -10,6 +10,7 @@ import { attachNavigation } from './touch.js';
 import { ControlOverlay } from './overlay.js';
 import { HelpOverlay } from './help.js';
 import { showError } from './error.js';
+import { setStatus } from './toast.js';
 import type { RenderInstruction, WindowRole } from '../shared/ipc.js';
 import { DEFAULT_SETTINGS } from '../core/types.js';
 import type { ResolvedSource } from './render-engine.js';
@@ -29,6 +30,7 @@ async function main(): Promise<void> {
   const role = readRole();
   const stage = document.getElementById('stage') as HTMLElement;
   const canvas = document.getElementById('page') as HTMLCanvasElement;
+  const loadingEl = document.getElementById('loading');
   setupCanvas(canvas);
 
   const reader = window.reader;
@@ -128,6 +130,7 @@ async function main(): Promise<void> {
         if (token !== renderSeq) return; // a newer render superseded this one
         if (resolved) paintSource(canvas, resolved, zoomPreset);
         else clearCanvas(canvas);
+        loadingEl?.classList.add('hidden'); // first paint done
       })
       .catch((err) => {
         console.error('render failed, re-syncing:', err);
@@ -136,10 +139,14 @@ async function main(): Promise<void> {
       });
   });
 
-  reader.onShowError((error) => showError(stage, error));
+  reader.onShowError((error) => {
+    loadingEl?.classList.add('hidden');
+    showError(stage, error);
+  });
   reader.onShowOverlay(() => overlay?.show());
   reader.onShowHelp(() => help.show());
   reader.onHideHelp(() => help.hide());
+  reader.onStatus((message) => setStatus(message));
   reader.onFullScreenChanged((isFs) => overlay?.setFullScreenState(isFs));
   reader.onSetDim((level) => {
     dimLayer.style.opacity = level === null ? '0' : String((100 - level) / 100);

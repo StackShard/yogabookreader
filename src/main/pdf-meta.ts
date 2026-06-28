@@ -26,13 +26,11 @@ export interface PdfMeta {
   isSpreadEncoded: boolean;
 }
 
-/** Read page count + dimensions and classify the document. */
-export async function loadPdfMeta(filePath: string, override?: boolean): Promise<PdfMeta> {
+async function openPdf(filePath: string): Promise<import('pdfjs-dist/legacy/build/pdf.mjs').PDFDocumentProxy> {
   const data = new Uint8Array(await fs.readFile(filePath));
   const { getDocument } = await loadPdfjs();
-  let doc;
   try {
-    doc = await getDocument({ data, isEvalSupported: false }).promise;
+    return await getDocument({ data, isEvalSupported: false }).promise;
   } catch (err) {
     const name = (err as { name?: string }).name;
     if (name === 'PasswordException') {
@@ -48,7 +46,27 @@ export async function loadPdfMeta(filePath: string, override?: boolean): Promise
       message: `Could not open PDF: ${(err as Error).message}`,
     });
   }
+}
 
+/**
+ * Fast: open the PDF only to read its page count, then close it. Used to open the
+ * document immediately; full per-page classification happens in the background.
+ */
+export async function loadPdfPageCount(filePath: string): Promise<number> {
+  const doc = await openPdf(filePath);
+  try {
+    return doc.numPages;
+  } finally {
+    await doc.destroy();
+  }
+}
+
+/**
+ * Slow: read every page's dimensions and classify the document
+ * (centerfold / spread-encoded detection). Run off the open path.
+ */
+export async function classifyPdf(filePath: string, override?: boolean): Promise<PdfMeta> {
+  const doc = await openPdf(filePath);
   const dims: PageDimensions[] = [];
   const totalPages = doc.numPages;
   try {

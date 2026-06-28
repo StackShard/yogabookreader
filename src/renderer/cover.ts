@@ -18,6 +18,21 @@ const MAX_CONCURRENT = 3;
 let active = 0;
 const waiting: Array<() => void> = [];
 
+// Progress tracking for the "Generating covers… X/Y" status (counts real
+// generations, i.e. cache misses; cached covers resolve instantly and aren't
+// counted).
+let genTotal = 0;
+let genDone = 0;
+const progressListeners: Array<(done: number, total: number) => void> = [];
+
+export function onCoverProgress(cb: (done: number, total: number) => void): void {
+  progressListeners.push(cb);
+}
+
+function emitProgress(): void {
+  for (const cb of progressListeners) cb(genDone, genTotal);
+}
+
 function acquire(): Promise<void> {
   if (active < MAX_CONCURRENT) {
     active++;
@@ -83,6 +98,8 @@ export async function getCover(filePath: string): Promise<string | null> {
   const cached = await window.reader.getCachedCover(filePath).catch(() => null);
   if (cached) return cached;
 
+  genTotal++;
+  emitProgress();
   await acquire();
   try {
     const source = await window.reader.getCoverSource(filePath).catch(() => null);
@@ -98,5 +115,7 @@ export async function getCover(filePath: string): Promise<string | null> {
     return null;
   } finally {
     release();
+    genDone++;
+    emitProgress();
   }
 }

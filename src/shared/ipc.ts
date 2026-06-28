@@ -73,6 +73,7 @@ export const RendererToMain = {
   resume: 'r2m:resume',
   getResumeInfo: 'r2m:get-resume-info',
   getLibrary: 'r2m:get-library',
+  getLibraryCached: 'r2m:get-library-cached',
   pickFolder: 'r2m:pick-folder',
   getCachedCover: 'r2m:get-cached-cover',
   getCoverSource: 'r2m:get-cover-source',
@@ -105,6 +106,7 @@ export const MainToRenderer = {
   hideHelp: 'm2r:hide-help',
   fullScreenChanged: 'm2r:full-screen-changed',
   setDim: 'm2r:set-dim',
+  status: 'm2r:status',
 } as const;
 
 /** Payload of the one-time init message that tells a window its role. */
@@ -123,6 +125,7 @@ export interface ReaderBridge {
   onHideHelp(cb: () => void): void;
   onFullScreenChanged(cb: (isFullScreen: boolean) => void): void;
   onSetDim(cb: (level: number | null) => void): void;
+  onStatus(cb: (message: string | null) => void): void;
 
   ready(): void;
   openFile(filePath: string): void;
@@ -146,6 +149,7 @@ export interface ReaderBridge {
   getRecentFiles(): Promise<RecentFileView[]>;
   getSettings(): Promise<AppSettings>;
   getLibrary(): Promise<LibraryGroup[]>;
+  getLibraryCached(): Promise<LibraryGroup[]>;
   pickFolder(): Promise<LibraryGroup[]>;
   getResumeInfo(): Promise<ResumeInfo | null>;
   getCachedCover(filePath: string): Promise<string | null>;
