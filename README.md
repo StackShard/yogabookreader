@@ -18,11 +18,9 @@ The app is free and open source. No ads, no tracking, no data collection.
 > two portrait screens side by side, it'll work. That includes the Yoga Book Gen 9,
 > the Surface Neo (RIP), and even a desktop with two rotated monitors.
 
+If this makes you happy, consider buying me a coffee. Not a subscription, just a one-time thanks.
 
-<p align="center">
-  <a href="https://ko-fi.com/X3X4228M3H"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support on Ko-fi"></a><br>
-  <sup><i>If this saved you time, buy me a coffee. Not a subscription, just a one-time thanks.</i></sup>
-</p>
+  <a href="https://ko-fi.com/X3X4228M3H"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support on Ko-fi"></a>
 
 ### Will it work on my device?
 
