@@ -81,11 +81,17 @@ Get-FileHash .\YogaBookReader-*-portable.exe -Algorithm SHA256
    - **Tap the right edge** of either screen → next page
    - **Swipe** left or right to turn pages
    - **Tap the center** of the screen → show/hide controls
-5. **Use the controls** — The overlay bar has prev/next, library, help, and a
-   settings drawer with zoom, reading direction, and brightness.
+   - **Double-tap center** → cycle zoom preset (Fit Width → Fit Height → Full Bleed)
+   - **Long-press left edge** → first page
+   - **Long-press right edge** → last page
+5. **Use the controls** — The overlay bar has quit, help, settings, library,
+   brightness and auto-brightness controls. Tap **⚙ Settings** to open the
+   settings strip (zoom presets, reading direction); it auto-collapses after
+   making a selection.
 
 **Keyboard shortcuts** (when connected):
 - **Left/Right arrow keys** — previous/next page
+- **Home / End** — first / last page
 - **F** or **F11** — toggle fullscreen
 - **Escape** — close overlay or exit fullscreen
 

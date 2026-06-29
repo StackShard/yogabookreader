@@ -2,6 +2,21 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
+## [1.1.1] — 2026-06-29
+
+### New Gestures & Shortcuts
+- **Double-tap centre** of the screen to cycle through zoom presets (Fit Width → Fit Height → Full Bleed)
+- **Long-press left edge** to jump to the **first page**
+- **Long-press right edge** to jump to the **last page**
+- **Home / End keys** — jump to first / last page
+
+### UI Improvements
+- **Active zoom highlight** — the current zoom-preset button is now visually highlighted in the settings strip
+- **Book title** displayed above the progress bar when a document is open
+- **Settings strip auto-collapses** after selecting a zoom preset or toggling reading direction — one less tap to get back to reading
+- **Swipe down** on the settings strip dismisses the overlay entirely (previous behaviour collapsed the strip; a harder swipe now closes it)
+- **Control bar reordered** — Quit · Help · Settings · Library · brightness · Auto, with brightness and Auto-brightness always visible
+
 ## [1.1] — 2026-06-29
 
 ### UI Polish — Modernised Reader Overlay
