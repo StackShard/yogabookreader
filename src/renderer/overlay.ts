@@ -109,47 +109,43 @@ export class ControlOverlay {
     progress.className = 'overlay-progress';
     progress.append(this.progressLabel, gotoInput, gotoBtn, this.progressTrack);
 
-    // Single settings strip (collapsed by default)
+    // Settings strip (collapsed by default) — zoom and direction only
     const settingsRow = document.createElement('div');
     settingsRow.className = 'overlay-settings-row';
     settingsRow.append(
-      this.button('? Help', () => this.cb.onShowHelp()),
       this.button('Fit Width', () => this.cb.onSetZoom('fit-width')),
       this.button('Fit Height', () => this.cb.onSetZoom('fit-height')),
       this.button('Full Bleed', () => this.cb.onSetZoom('full-bleed')),
       this.button('↔ LTR/RTL', () => this.cb.onToggleDirection()),
-      this.adaptiveButton,
-      this.brightnessControl(),
     );
 
     const settingsWrap = document.createElement('div');
     settingsWrap.className = 'overlay-expanded';
     settingsWrap.appendChild(settingsRow);
 
-    // Minimal bar: Library | ⚙ Settings/⌄ Hide | Quit
+    // Primary bar: Quit | Help | Settings | Library | brightness | Auto
     const minimal = document.createElement('div');
     minimal.className = 'overlay-bar';
     minimal.append(
-      this.button('▦ Library', () => this.cb.onOpenLibrary()),
-      this.settingsButton,
       this.buildQuitButton(),
+      this.button('? Help', () => this.cb.onShowHelp()),
+      this.settingsButton,
+      this.button('▦ Library', () => this.cb.onOpenLibrary()),
+      this.brightnessControl(),
+      this.adaptiveButton,
     );
 
     // Order: progress, settings strip, confirm row, minimal bar
     this.root.append(progress, settingsWrap, this.confirmRow, minimal);
   }
 
-  /** Settings button behaviour depends on expanded state — single handler, no stacking. */
+  /** Settings button toggles the expanded strip; stays labelled "⚙ Settings" either way. */
   private makeSettingsButton(): HTMLButtonElement {
     const b = document.createElement('button');
     b.textContent = '⚙ Settings';
     b.className = 'overlay-btn overlay-btn-settings';
     b.addEventListener('click', () => {
-      if (this.expanded) {
-        this.hide();
-      } else {
-        this.setExpanded(true);
-      }
+      this.setExpanded(!this.expanded);
       this.poke();
     });
     return b;
@@ -264,7 +260,6 @@ export class ControlOverlay {
   private setExpanded(value: boolean): void {
     this.expanded = value;
     this.root.classList.toggle('expanded', value);
-    this.settingsButton.textContent = value ? '⌄ Hide' : '⚙ Settings';
     this.poke();
   }
 
@@ -279,7 +274,6 @@ export class ControlOverlay {
     // Reset to collapsed state so next show starts clean
     this.expanded = false;
     this.root.classList.remove('expanded');
-    this.settingsButton.textContent = '⚙ Settings';
   }
 
   private poke(): void {

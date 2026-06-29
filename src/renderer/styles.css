@@ -233,12 +233,13 @@ body {
   transition: width 0.2s ease;
 }
 
-/* Minimal bar */
+/* Primary bar */
 .overlay-bar {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .overlay-btn {
@@ -448,19 +449,9 @@ body {
 }
 
 .help-kofi {
-  display: inline-block;
-  margin-top: 8px;
-}
-
-.help-kofi img {
-  height: 36px;
-  vertical-align: middle;
-  opacity: 0.85;
-  transition: opacity 0.15s ease;
-}
-
-.help-kofi:hover img {
-  opacity: 1;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* ---- Error page ---- */
