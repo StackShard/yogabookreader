@@ -55,23 +55,22 @@ export class HelpOverlay {
 
     const donate = document.createElement('div');
     donate.className = 'help-donate';
-    donate.innerHTML =
-      '<p>If this makes you happy, consider buying me a coffee. Not a subscription, just a one-time thanks.</p>';
 
-    const kofiLink = document.createElement('a');
-    kofiLink.href = '#';
-    kofiLink.className = 'help-kofi';
-    kofiLink.addEventListener('click', (e) => {
+    const donatePara = document.createElement('p');
+    donatePara.append('If this makes you happy, consider ');
+
+    const coffeeLink = document.createElement('a');
+    coffeeLink.href = '#';
+    coffeeLink.className = 'help-kofi';
+    coffeeLink.textContent = 'buying me a coffee';
+    coffeeLink.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation(); // don't dismiss help on this tap
       window.reader.openExternal('https://ko-fi.com/X3X4228M3H');
     });
 
-    const kofiImg = document.createElement('img');
-    kofiImg.src = 'https://ko-fi.com/img/githubbutton_sm.svg';
-    kofiImg.alt = 'Support on Ko-fi';
-    kofiLink.appendChild(kofiImg);
-    donate.appendChild(kofiLink);
+    donatePara.append(coffeeLink, '. Not a subscription, just a one-time thanks.');
+    donate.appendChild(donatePara);
 
     hints.append(tips, donate);
     return hints;

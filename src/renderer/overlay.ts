@@ -15,6 +15,10 @@ import {
 
 const AUTO_HIDE_MS = 8000;
 const QUIT_CONFIRM_MS = 5000;
+const SWIPE_DISMISS_PX = 150;
+const SWIPE_COLLAPSE_PX = 60;
+
+const ZOOM_PRESETS: ZoomPreset[] = ['fit-height', 'fit-width', 'full-bleed'];
 
 export interface OverlayCallbacks {
   onPrev(): void;
@@ -32,18 +36,21 @@ export interface OverlayCallbacks {
 
 export class ControlOverlay {
   private readonly root: HTMLElement;
+  private readonly titleEl: HTMLElement;
   private readonly progressLabel: HTMLElement;
   private readonly progressTrack: HTMLElement;
   private readonly progressFill: HTMLElement;
   private readonly adaptiveButton: HTMLButtonElement;
   private readonly settingsButton: HTMLButtonElement;
   private readonly confirmRow: HTMLElement;
+  private readonly zoomButtons = new Map<ZoomPreset, HTMLButtonElement>();
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
   private confirmTimer: ReturnType<typeof setTimeout> | null = null;
   private expanded = false;
   private hovered = false;
   private adaptiveDisabled: boolean;
   private totalPages = 0;
+  private currentZoom: ZoomPreset = 'fit-height';
 
   constructor(
     private readonly cb: OverlayCallbacks,
@@ -53,6 +60,9 @@ export class ControlOverlay {
     this.adaptiveDisabled = initialAdaptiveDisabled;
     this.root = document.createElement('div');
     this.root.className = 'overlay hidden';
+
+    this.titleEl = document.createElement('div');
+    this.titleEl.className = 'overlay-title';
 
     this.progressLabel = document.createElement('span');
     this.progressLabel.className = 'overlay-progress-label';
@@ -109,47 +119,58 @@ export class ControlOverlay {
     progress.className = 'overlay-progress';
     progress.append(this.progressLabel, gotoInput, gotoBtn, this.progressTrack);
 
-    // Single settings strip (collapsed by default)
+    // Settings strip: zoom presets + direction. Auto-collapses after each action.
     const settingsRow = document.createElement('div');
     settingsRow.className = 'overlay-settings-row';
+    const zoomFitWidth = this.zoomButton('Fit Width', 'fit-width');
+    const zoomFitHeight = this.zoomButton('Fit Height', 'fit-height');
+    const zoomFullBleed = this.zoomButton('Full Bleed', 'full-bleed');
     settingsRow.append(
-      this.button('? Help', () => this.cb.onShowHelp()),
-      this.button('Fit Width', () => this.cb.onSetZoom('fit-width')),
-      this.button('Fit Height', () => this.cb.onSetZoom('fit-height')),
-      this.button('Full Bleed', () => this.cb.onSetZoom('full-bleed')),
-      this.button('↔ LTR/RTL', () => this.cb.onToggleDirection()),
-      this.adaptiveButton,
-      this.brightnessControl(),
+      zoomFitWidth,
+      zoomFitHeight,
+      zoomFullBleed,
+      this.button('↔ LTR/RTL', this.settingsAction(() => this.cb.onToggleDirection())),
     );
 
     const settingsWrap = document.createElement('div');
     settingsWrap.className = 'overlay-expanded';
     settingsWrap.appendChild(settingsRow);
 
-    // Minimal bar: Library | ⚙ Settings/⌄ Hide | Quit
+    // Primary bar: Quit | Help | Settings | Library | brightness | Auto
     const minimal = document.createElement('div');
     minimal.className = 'overlay-bar';
     minimal.append(
-      this.button('▦ Library', () => this.cb.onOpenLibrary()),
-      this.settingsButton,
       this.buildQuitButton(),
+      this.button('? Help', () => this.cb.onShowHelp()),
+      this.settingsButton,
+      this.button('▦ Library', () => this.cb.onOpenLibrary()),
+      this.brightnessControl(),
+      this.adaptiveButton,
     );
 
-    // Order: progress, settings strip, confirm row, minimal bar
-    this.root.append(progress, settingsWrap, this.confirmRow, minimal);
+    // Order: title, progress, settings strip, confirm row, minimal bar
+    this.root.append(this.titleEl, progress, settingsWrap, this.confirmRow, minimal);
   }
 
-  /** Settings button behaviour depends on expanded state — single handler, no stacking. */
+  /** Creates a zoom button and registers it in the zoomButtons map. */
+  private zoomButton(label: string, preset: ZoomPreset): HTMLButtonElement {
+    const b = this.button(label, this.settingsAction(() => this.cb.onSetZoom(preset)));
+    this.zoomButtons.set(preset, b);
+    return b;
+  }
+
+  /** Wraps a settings-strip action so it collapses the strip after firing. */
+  private settingsAction(action: () => void): () => void {
+    return () => { action(); this.setExpanded(false); };
+  }
+
+  /** Settings button toggles the expanded strip; stays labelled "⚙ Settings" either way. */
   private makeSettingsButton(): HTMLButtonElement {
     const b = document.createElement('button');
     b.textContent = '⚙ Settings';
     b.className = 'overlay-btn overlay-btn-settings';
     b.addEventListener('click', () => {
-      if (this.expanded) {
-        this.hide();
-      } else {
-        this.setExpanded(true);
-      }
+      this.setExpanded(!this.expanded);
       this.poke();
     });
     return b;
@@ -245,8 +266,15 @@ export class ControlOverlay {
     window.addEventListener('pointerup', (e) => {
       if (!tracking) return;
       tracking = false;
-      if (startY - e.clientY > 60) this.setExpanded(true);
-      else if (e.clientY - startY > 60) this.setExpanded(false);
+      const dy = e.clientY - startY;
+      if (startY - e.clientY > SWIPE_COLLAPSE_PX) {
+        this.setExpanded(true);
+      } else if (dy > SWIPE_DISMISS_PX) {
+        // Hard swipe down dismisses the whole overlay.
+        this.hide();
+      } else if (dy > SWIPE_COLLAPSE_PX) {
+        this.setExpanded(false);
+      }
     });
   }
 
@@ -264,7 +292,6 @@ export class ControlOverlay {
   private setExpanded(value: boolean): void {
     this.expanded = value;
     this.root.classList.toggle('expanded', value);
-    this.settingsButton.textContent = value ? '⌄ Hide' : '⚙ Settings';
     this.poke();
   }
 
@@ -279,13 +306,32 @@ export class ControlOverlay {
     // Reset to collapsed state so next show starts clean
     this.expanded = false;
     this.root.classList.remove('expanded');
-    this.settingsButton.textContent = '⚙ Settings';
   }
 
   private poke(): void {
     if (this.hideTimer) clearTimeout(this.hideTimer);
     if (this.hovered) return;
     this.hideTimer = setTimeout(() => this.hide(), AUTO_HIDE_MS);
+  }
+
+  /** Update the book title shown above the progress row. */
+  setBookTitle(title: string): void {
+    this.titleEl.textContent = title;
+  }
+
+  /** Highlight the button matching the current zoom preset. */
+  setActiveZoom(preset: ZoomPreset): void {
+    this.currentZoom = preset;
+    for (const [p, btn] of this.zoomButtons) {
+      btn.classList.toggle('overlay-btn-active', p === preset);
+    }
+  }
+
+  /** Cycle to the next zoom preset (used by double-tap). */
+  cycleZoom(): void {
+    const idx = ZOOM_PRESETS.indexOf(this.currentZoom);
+    const next = ZOOM_PRESETS[(idx + 1) % ZOOM_PRESETS.length];
+    this.cb.onSetZoom(next);
   }
 
   setProgress(pages: number[], totalPages: number): void {

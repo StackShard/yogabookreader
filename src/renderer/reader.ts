@@ -12,7 +12,7 @@ import { HelpOverlay } from './help.js';
 import { showError } from './error.js';
 import { setStatus } from './toast.js';
 import type { RenderInstruction, WindowRole } from '../shared/ipc.js';
-import { DEFAULT_SETTINGS } from '../core/types.js';
+import { DEFAULT_SETTINGS, type ZoomPreset } from '../core/types.js';
 import type { ResolvedSource } from './render-engine.js';
 
 function readRole(): WindowRole {
@@ -35,7 +35,7 @@ async function main(): Promise<void> {
 
   const reader = window.reader;
   let totalPages = 0;
-  let zoomPreset = DEFAULT_SETTINGS.defaultZoomPreset;
+  let zoomPreset: ZoomPreset = DEFAULT_SETTINGS.defaultZoomPreset;
   let currentFilePath: string | null = null;
   // Monotonic token so a slow async resolve from an earlier render can't paint
   // over a newer one during rapid page turns.
@@ -78,6 +78,9 @@ async function main(): Promise<void> {
       onNext: () => reader.next(),
       onPrev: () => reader.prev(),
       onCenter: () => reader.requestOverlay(),
+      onDoubleTap: () => overlay?.cycleZoom(),
+      onLongPrev: () => reader.jumpToPage(0),
+      onLongNext: () => reader.jumpToPage(totalPages > 0 ? totalPages - 1 : 0),
     },
     { tapZoneWidth: settings.tapZoneWidth, edgeDeadZone: settings.edgeDeadZone },
   );
@@ -91,6 +94,7 @@ async function main(): Promise<void> {
   reader.onDocumentLoaded((info) => {
     totalPages = info.totalPages;
     zoomPreset = info.zoomPreset;
+    overlay?.setBookTitle(info.displayName);
     // Free the previous document's cached pages when switching files.
     if (currentFilePath !== null && currentFilePath !== info.filePath) resetCaches();
     currentFilePath = info.filePath;
@@ -123,6 +127,7 @@ async function main(): Promise<void> {
   reader.onRender((instruction) => {
     zoomPreset = instruction.zoomPreset;
     overlay?.setProgress(instruction.pages, totalPages);
+    overlay?.setActiveZoom(instruction.zoomPreset);
     prefetch(instruction.prefetch, canvas.height);
     const token = ++renderSeq;
     resolveWithRetry(instruction)

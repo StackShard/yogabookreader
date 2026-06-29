@@ -175,6 +175,18 @@ body {
   pointer-events: none;
 }
 
+/* Book title above the progress row */
+.overlay-title {
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  margin-bottom: 6px;
+  min-height: 1em;
+}
+
 /* Progress row: page label + goto input + go button + bar */
 .overlay-progress {
   display: flex;
@@ -233,12 +245,13 @@ body {
   transition: width 0.2s ease;
 }
 
-/* Minimal bar */
+/* Primary bar */
 .overlay-bar {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .overlay-btn {
@@ -249,6 +262,15 @@ body {
 .overlay.expanded .overlay-btn-settings {
   background: var(--accent-press);
   color: #fff;
+}
+
+/* Active zoom preset button */
+.overlay-btn-active {
+  background: var(--accent);
+  color: #fff;
+}
+.overlay-btn-active:active {
+  background: var(--accent-press);
 }
 
 /* Quit button: muted red tint */
@@ -448,19 +470,9 @@ body {
 }
 
 .help-kofi {
-  display: inline-block;
-  margin-top: 8px;
-}
-
-.help-kofi img {
-  height: 36px;
-  vertical-align: middle;
-  opacity: 0.85;
-  transition: opacity 0.15s ease;
-}
-
-.help-kofi:hover img {
-  opacity: 1;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* ---- Error page ---- */
