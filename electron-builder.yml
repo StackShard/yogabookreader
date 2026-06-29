@@ -7,6 +7,7 @@ files:
   - out/**/*
   - package.json
 win:
+  publish: null
   target:
     - target: portable
       arch:
@@ -18,6 +19,7 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   artifactName: YogaBookReader-${version}-setup-${arch}.exe
+  differentialPackage: false
 portable:
   artifactName: YogaBookReader-${version}-portable.exe
 # Portable target: no installer, no registry entries, single .exe (PRD §Packaging).
