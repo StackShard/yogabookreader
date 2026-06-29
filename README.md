@@ -36,10 +36,10 @@ That's it. No specific brand, model, or resolution required.
 ### Download & Run
 
 1. Go to the **[Releases page](https://github.com/StackShard/yogabookreader/releases)**
-2. Download the latest `YogaBookReader-1.0.0-portable.exe`
+2. Download the latest `YogaBookReader-*-portable.exe` from the release assets
 3. Double-click to run — no installation needed
 
-You can also download the **installer** version (`YogaBookReader-1.0.0-setup-x64.exe`)
+You can also download the **installer** version (`YogaBookReader-*-setup-x64.exe`)
 if you prefer a traditional Start menu entry and desktop shortcut.
 
 ### ⚠️ Windows SmartScreen Warning
@@ -65,7 +65,7 @@ reputation system learns to trust it and the warning stops appearing.
 value posted in the release notes:
 
 ```powershell
-Get-FileHash .\YogaBookReader-1.0.0-portable.exe -Algorithm SHA256
+Get-FileHash .\YogaBookReader-*-portable.exe -Algorithm SHA256
 ```
 
 ### How to Use It
@@ -99,7 +99,7 @@ again. If that works, add the .exe to your antivirus exclusion list. You can als
 run it from PowerShell to see any error output:
 
 ```powershell
-.\YogaBookReader-1.0.0-portable.exe
+.\YogaBookReader-*-portable.exe
 ```
 </details>
 
@@ -266,8 +266,8 @@ npm run package
 ```
 
 This produces:
-- `dist\YogaBookReader-1.0.0-portable.exe` — no-install portable
-- `dist\YogaBookReader-1.0.0-setup-x64.exe` — traditional installer
+- `dist\YogaBookReader-*-portable.exe` — no-install portable
+- `dist\YogaBookReader-*-setup-x64.exe` — traditional installer
 
 Then either double-click the .exe, or make it easy to launch:
 
