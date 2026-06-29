@@ -2,13 +2,13 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
-## [1.1.0] — 2026-06-29
+## [1.1] — 2026-06-29
 
 ### UI Polish — Modernised Reader Overlay
 
 #### Controls
 - Removed redundant Prev / Next buttons from the control bar (swipe and tap-zone navigation unchanged)
-- Merged the ⚙ More / Less toggle and ⌄ Hide button into a single **⚙ Settings / ⌄ Hide** button — one tap expands the settings strip; a second tap dismisses the entire overlay
+- Merged the ⚙ More / Less toggle and ⌄ Hide button into a single **⚙ Settings / ⌄ Hide** button
 - Removed the Exit Full-Screen button (Esc key still toggles full-screen)
 - Moved **Quit** to the primary control bar so it is always reachable without opening settings
 - Added an inline **quit confirmation row** (Really quit? / Cancel / Quit Now) that auto-dismisses after 5 seconds if untouched
@@ -21,6 +21,13 @@ All notable changes to Yoga Book Reader are documented here.
 #### Settings Strip
 - Collapsed the four labelled setting sections (View / Reading / Display / App) into a single **horizontal-scroll row**: Fit Width · Fit Height · Full Bleed · ↔ LTR/RTL · ☀ Auto · brightness slider
 - Auto-brightness button label shortened to `☀ Auto: On / Off`
+
+### Architecture & Maintainability
+- Refactored `ReaderController` into dedicated `BrightnessController` and `DocumentOpener` modules — cleaner separation, easier to test and extend
+- Streamlined IPC layer: consolidated handler registration patterns, ~120 lines of boilerplate removed
+
+### Reading Engine
+- Improved page aspect ratio classification for more accurate spread detection on mixed-orientation documents
 
 ## [1.0.0] — 2026-06-28
 

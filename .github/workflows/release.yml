@@ -4,9 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g. v1.0.0)'
+        description: 'Release tag (e.g. v1.1)'
         required: true
-        default: 'v1.0.0'
   push:
     tags:
       - 'v*'
@@ -37,7 +36,32 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: Yoga Book Reader ${{ github.event.inputs.tag || github.ref_name }}
+          body: |
+            ## Changes in this Release
+
+            ### UI Polish — Modernised Reader Overlay
+
+            #### Controls
+            - Removed redundant Prev / Next buttons (swipe and tap-zone navigation unchanged)
+            - Merged ⚙ More / Less toggle and ⌄ Hide button into a single **⚙ Settings / ⌄ Hide** button
+            - Moved **Quit** to the primary control bar
+            - Added inline **quit confirmation row** with 5-second auto-dismiss
+
+            #### Progress & Navigation
+            - Go-to-page input and **Go** button on the same row as the progress bar
+            - Progress bar is now **tappable** — tap anywhere to jump to that position
+            - Page label shortened to `N / T` format
+
+            #### Settings Strip
+            - Collapsed four setting sections into a single **horizontal-scroll row**
+            - Auto-brightness label shortened to `☀ Auto: On / Off`
+
+            ### Architecture & Maintainability
+            - Refactored `ReaderController` into dedicated `BrightnessController` and `DocumentOpener` modules
+            - Streamlined IPC layer: consolidated handler registration, ~120 lines of boilerplate removed
+
+            ### Reading Engine
+            - Improved aspect ratio classification for more accurate spread detection on mixed-orientation documents
           draft: false
           prerelease: false
           files: dist/*.exe
-          generate_release_notes: true
