@@ -8,7 +8,7 @@
 
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import {
   type DisplayMode,
   type ReadingDirection,
@@ -140,6 +140,9 @@ export class ReaderController {
     ipcMain.on(RendererToMain.dismissHelp, () => {
       updateSettings({ helpShown: true });
       this.broadcast(MainToRenderer.hideHelp);
+    });
+    ipcMain.on(RendererToMain.openExternal, (_e, url: string) => {
+      void shell.openExternal(url);
     });
   }
 

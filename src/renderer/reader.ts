@@ -147,7 +147,7 @@ async function main(): Promise<void> {
   reader.onShowHelp(() => help.show());
   reader.onHideHelp(() => help.hide());
   reader.onStatus((message) => setStatus(message));
-  reader.onFullScreenChanged((isFs) => overlay?.setFullScreenState(isFs));
+  reader.onFullScreenChanged((_isFs) => { /* full-screen state tracked by main process; Esc key toggles */ });
   reader.onSetDim((level) => {
     dimLayer.style.opacity = level === null ? '0' : String((100 - level) / 100);
   });

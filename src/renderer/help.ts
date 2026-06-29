@@ -47,9 +47,33 @@ export class HelpOverlay {
   private buildHints(): HTMLElement {
     const hints = document.createElement('div');
     hints.className = 'help-hints';
-    hints.innerHTML =
+
+    const tips = document.createElement('div');
+    tips.innerHTML =
       '<p>Swipe left/right to turn pages · Arrow keys or PageUp/PageDown also work</p>' +
       '<p>Tap the centre for controls · Esc toggles full-screen · Tap anywhere to close</p>';
+
+    const donate = document.createElement('div');
+    donate.className = 'help-donate';
+    donate.innerHTML =
+      '<p>If this makes you happy, consider buying me a coffee. Not a subscription, just a one-time thanks.</p>';
+
+    const kofiLink = document.createElement('a');
+    kofiLink.href = '#';
+    kofiLink.className = 'help-kofi';
+    kofiLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation(); // don't dismiss help on this tap
+      window.reader.openExternal('https://ko-fi.com/X3X4228M3H');
+    });
+
+    const kofiImg = document.createElement('img');
+    kofiImg.src = 'https://ko-fi.com/img/githubbutton_sm.svg';
+    kofiImg.alt = 'Support on Ko-fi';
+    kofiLink.appendChild(kofiImg);
+    donate.appendChild(kofiLink);
+
+    hints.append(tips, donate);
     return hints;
   }
 
