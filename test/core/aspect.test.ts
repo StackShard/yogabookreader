@@ -4,6 +4,7 @@ import {
   isWidePage,
   detectSpreadEncoding,
   classifyDocument,
+  provisionalClassification,
   WIDE_THRESHOLD,
   type PageDimensions,
 } from '../../src/core/aspect.js';
@@ -98,5 +99,31 @@ describe('classifyDocument', () => {
     expect(isSpreadEncoded).toBe(true);
     // Narrow pages remain single even when forced on.
     expect(pageAspects).toEqual(['single', 'single']);
+  });
+});
+
+describe('provisionalClassification', () => {
+  it('marks all pages single when no override', () => {
+    const result = provisionalClassification(5, undefined);
+    expect(result.isSpreadEncoded).toBe(false);
+    expect(result.pageAspects).toEqual(['single', 'single', 'single', 'single', 'single']);
+  });
+
+  it('marks all pages spread-encoded when override is true', () => {
+    const result = provisionalClassification(3, true);
+    expect(result.isSpreadEncoded).toBe(true);
+    expect(result.pageAspects).toEqual(['spread-encoded', 'spread-encoded', 'spread-encoded']);
+  });
+
+  it('marks all pages single when override is false (not spread-encoded)', () => {
+    const result = provisionalClassification(2, false);
+    expect(result.isSpreadEncoded).toBe(false);
+    expect(result.pageAspects).toEqual(['single', 'single']);
+  });
+
+  it('handles zero pages', () => {
+    const result = provisionalClassification(0, undefined);
+    expect(result.isSpreadEncoded).toBe(false);
+    expect(result.pageAspects).toEqual([]);
   });
 });

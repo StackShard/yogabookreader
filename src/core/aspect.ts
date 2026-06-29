@@ -79,3 +79,21 @@ export function classifyDocument(
   });
   return { isSpreadEncoded, pageAspects };
 }
+
+/**
+ * A provisional classification used to open instantly: honour a saved
+ * spread-encoded override, otherwise treat every page as a normal single page
+ * (refined by the background pass of {@link classifyDocument}).
+ */
+export function provisionalClassification(
+  totalPages: number,
+  override: boolean | undefined,
+): { isSpreadEncoded: boolean; pageAspects: AspectClass[] } {
+  const spread = override === true;
+  return {
+    isSpreadEncoded: spread,
+    pageAspects: Array.from({ length: totalPages }, () =>
+      spread ? ('spread-encoded' as AspectClass) : ('single' as AspectClass),
+    ),
+  };
+}

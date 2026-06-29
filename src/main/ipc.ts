@@ -10,10 +10,6 @@ import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import {
-  BRIGHTNESS_MAX,
-  BRIGHTNESS_MIN,
-  DEFAULT_SETTINGS,
-  type AspectClass,
   type DisplayMode,
   type ReadingDirection,
   type ZoomPreset,
@@ -30,12 +26,10 @@ import {
 } from '../shared/ipc.js';
 import {
   detectType,
-  loadComicImages,
-  classifyComicImages,
   FileLoadError,
 } from './file-loader.js';
-import { loadPdfPageCount, classifyPdf } from './pdf-meta.js';
 import { ReaderSession } from './session.js';
+import { analyzeFile, refineClassification } from './document-opener.js';
 import { scanFolder, thumbnailCacheDir } from './library-scanner.js';
 import { extractFirstImage, hashPath } from './cbz-extractor.js';
 import { fileUrl as coverUrl } from './protocol.js';
@@ -52,7 +46,7 @@ import {
   setLibraryCache,
   updateSettings,
 } from './state-store.js';
-import { setAdaptiveBrightness, setHardwareBrightness } from './brightness.js';
+import { BrightnessController } from './brightness-controller.js';
 
 export class ReaderController {
   private session: ReaderSession | null = null;
@@ -62,6 +56,7 @@ export class ReaderController {
   private rebuilding = false;
   /** Incremented per open; guards background classification against stale applies. */
   private openToken = 0;
+  private readonly brightness = new BrightnessController();
 
   setWindows(windows: ReaderWindow[]): void {
     this.windows = windows;
@@ -172,14 +167,8 @@ export class ReaderController {
    * backlight, and tell the renderers whether to apply the dim-overlay fallback.
    */
   private async setBrightness(level: number): Promise<void> {
-    const clamped = Math.max(BRIGHTNESS_MIN, Math.min(BRIGHTNESS_MAX, Math.round(level)));
-    updateSettings({ brightness: clamped });
-    const ok = await setHardwareBrightness(clamped);
-    // null clears any dim overlay (hardware handled it); otherwise dim in-app.
-    const dim = ok ? null : clamped;
-    for (const { window } of this.windows) {
-      if (!window.isDestroyed()) window.webContents.send(MainToRenderer.setDim, dim);
-    }
+    const { dimLevel } = await this.brightness.set(level);
+    this.broadcastDim(dimLevel);
   }
 
   /**
@@ -187,22 +176,25 @@ export class ReaderController {
    * adaptive brightness (so it can't override the manual level), then set it.
    */
   async applyStoredBrightness(): Promise<void> {
-    const settings = getSettings();
-    if (settings.disableAdaptiveBrightness) await setAdaptiveBrightness(false);
-    await this.setBrightness(settings.brightness);
+    const { dimLevel } = await this.brightness.startup();
+    this.broadcastDim(dimLevel);
   }
 
   /** Toggle disabling of Windows adaptive brightness (persisted). */
   private async setAdaptiveBrightnessDisabled(disabled: boolean): Promise<void> {
-    updateSettings({ disableAdaptiveBrightness: disabled });
-    // disabled => turn adaptive OFF; enabled again => turn it back ON.
-    await setAdaptiveBrightness(!disabled);
-    if (disabled) await this.setBrightness(getSettings().brightness);
+    const result = await this.brightness.setAdaptiveDisabled(disabled);
+    if (result) this.broadcastDim(result.dimLevel);
   }
 
   /** Restore Windows adaptive brightness (call on quit). */
   async restoreAdaptiveBrightness(): Promise<void> {
-    if (getSettings().disableAdaptiveBrightness) await setAdaptiveBrightness(true);
+    await this.brightness.shutdown();
+  }
+
+  private broadcastDim(level: number | null): void {
+    for (const { window } of this.windows) {
+      if (!window.isDestroyed()) window.webContents.send(MainToRenderer.setDim, level);
+    }
   }
 
   /** Scanned library grouped into one section per sub-folder. */
@@ -332,97 +324,52 @@ export class ReaderController {
 
   /** Open a document, building a session and broadcasting it to all windows. */
   async openDocument(filePath: string): Promise<void> {
-    const type = detectType(filePath);
-    log('openDocument:', filePath, 'type =', type);
-    if (!type) {
-      this.failOpen({
-        filePath,
-        reason: 'unsupported',
-        message: 'Unsupported file type.',
-      });
-      return;
-    }
-
+    log('openDocument:', filePath);
+    const token = ++this.openToken;
     const settings = getSettings();
     const fileState = getFileState(filePath);
-    const readingDirection = fileState?.readingDirection ?? settings.defaultReadingDirection;
-    // Always open at the code default (Fit Width); ignore stale persisted zoom so
-    // the default reliably wins. The overlay buttons still change it per session.
-    const zoomPreset = DEFAULT_SETTINGS.defaultZoomPreset;
-    const override = fileState?.isSpreadEncoded;
     const displayMode = currentPlacement().mode === 'dual' ? 'dual' : 'single';
-    const displayName = path.basename(filePath, path.extname(filePath));
-    const token = ++this.openToken;
 
-    // Fast path: get just what's needed to open (page count for PDF, extracted
-    // images for comics). The expensive per-page classification runs in the
-    // background so the document appears immediately.
-    let totalPages: number;
-    let imagePaths: string[] | undefined;
     try {
-      if (type === 'pdf') {
-        totalPages = await loadPdfPageCount(filePath);
-      } else {
-        imagePaths = await loadComicImages(filePath, type);
-        totalPages = imagePaths.length;
-      }
+      const result = await analyzeFile(filePath, settings, fileState, displayMode);
+      this.session = result.session;
+      this.pendingError = null;
+      recordRecentFile({
+        filePath,
+        displayName: result.displayName,
+        lastPage: this.session.anchorPage,
+        lastReadAt: Date.now(),
+      });
+
+      // Bring every window to the reader page; each requests content via `ready`.
+      this.navigateAll('reader');
+
+      // Refine centerfold / spread-encoded classification off the open path.
+      this.broadcastStatus('Analyzing pages…');
+      void this.refineInBackground(token, filePath, result.type, result.imagePaths, fileState?.isSpreadEncoded);
     } catch (err) {
       this.failOpen(
         err instanceof FileLoadError
           ? err.error
           : { filePath, reason: 'unknown', message: (err as Error).message },
       );
-      return;
     }
-
-    const provisional = provisionalClassification(totalPages, override);
-    this.session = new ReaderSession({
-      filePath,
-      displayName,
-      type,
-      pdfPath: type === 'pdf' ? filePath : undefined,
-      imagePaths,
-      totalPages,
-      pageAspects: provisional.pageAspects,
-      isSpreadEncoded: provisional.isSpreadEncoded,
-      readingDirection,
-      zoomPreset,
-      displayMode,
-      startPage: fileState?.lastPage,
-    });
-    this.pendingError = null;
-    log('opened (provisional):', totalPages, 'pages, mode =', displayMode);
-    recordRecentFile({ filePath, displayName, lastPage: this.session.anchorPage, lastReadAt: Date.now() });
-
-    // Bring every window to the reader page; each requests content via `ready`.
-    this.navigateAll('reader');
-
-    // Refine centerfold / spread-encoded classification off the open path.
-    this.broadcastStatus('Analyzing pages…');
-    void this.classifyInBackground(token, filePath, type, imagePaths, override);
   }
 
   /** Run the full page classification and apply it if still the current document. */
-  private async classifyInBackground(
+  private async refineInBackground(
     token: number,
     filePath: string,
     type: 'pdf' | 'cbz' | 'cbr',
     imagePaths: string[] | undefined,
     override: boolean | undefined,
   ): Promise<void> {
-    try {
-      const result =
-        type === 'pdf'
-          ? await classifyPdf(filePath, override)
-          : await classifyComicImages(imagePaths ?? [], override);
-      if (token !== this.openToken || !this.session) return; // superseded
+    const result = await refineClassification(filePath, type, imagePaths, override);
+    if (result && token === this.openToken && this.session) {
       this.session.setSpreadEncoded(result.isSpreadEncoded, result.pageAspects);
       this.broadcastRender();
-    } catch (err) {
-      logError('background classify failed:', (err as Error).message);
-    } finally {
-      if (token === this.openToken) this.broadcastStatus(null);
     }
+    if (token === this.openToken) this.broadcastStatus(null);
   }
 
   private broadcastStatus(message: string | null): void {
@@ -450,19 +397,17 @@ export class ReaderController {
     // Reclassify in the background without re-reading the file.
     const token = ++this.openToken;
     this.broadcastStatus('Reclassifying pages…');
-    try {
-      const result =
-        info.type === 'pdf'
-          ? await classifyPdf(info.filePath, value)
-          : await classifyComicImages(this.session.imagePaths ?? [], value);
-      if (token !== this.openToken || !this.session) return;
+    const result = await refineClassification(
+      info.filePath,
+      info.type,
+      this.session.imagePaths,
+      value,
+    );
+    if (result && token === this.openToken && this.session) {
       this.session.setSpreadEncoded(result.isSpreadEncoded, result.pageAspects);
       this.persistAndRender();
-    } catch (err) {
-      logError('reclassify failed:', (err as Error).message);
-    } finally {
-      if (token === this.openToken) this.broadcastStatus(null);
     }
+    if (token === this.openToken) this.broadcastStatus(null);
   }
 
   private toggleDirection(): void {
@@ -562,20 +507,3 @@ export class ReaderController {
   }
 }
 
-/**
- * A provisional classification used to open instantly: honour a saved
- * spread-encoded override, otherwise treat every page as a normal single page
- * (refined by the background pass).
- */
-function provisionalClassification(
-  totalPages: number,
-  override: boolean | undefined,
-): { pageAspects: AspectClass[]; isSpreadEncoded: boolean } {
-  const spread = override === true;
-  return {
-    isSpreadEncoded: spread,
-    pageAspects: Array.from({ length: totalPages }, () =>
-      spread ? ('spread-encoded' as AspectClass) : ('single' as AspectClass),
-    ),
-  };
-}
