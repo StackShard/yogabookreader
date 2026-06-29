@@ -94,6 +94,7 @@ export const RendererToMain = {
   requestHelp: 'r2m:request-help',
   dismissHelp: 'r2m:dismiss-help',
   quit: 'r2m:quit',
+  openExternal: 'r2m:open-external',
 } as const;
 
 /** Channels from main → renderer (webContents.send). */
@@ -146,6 +147,7 @@ export interface ReaderBridge {
   requestHelp(): void;
   dismissHelp(): void;
   quit(): void;
+  openExternal(url: string): void;
 
   getRecentFiles(): Promise<RecentFileView[]>;
   clearRecentFiles(): void;

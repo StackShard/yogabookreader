@@ -175,27 +175,54 @@ body {
   pointer-events: none;
 }
 
-/* Page progress */
+/* Progress row: page label + goto input + go button + bar */
 .overlay-progress {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .overlay-progress-label {
-  font-size: 16px;
+  font-size: 15px;
   color: var(--muted);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  min-width: 72px;
+}
+
+.overlay-goto-input {
+  font-size: 16px;
+  min-height: 44px;
+  padding: 8px 10px;
+  width: 68px;
+  border-radius: var(--radius);
+  border: 1px solid #3a3a3e;
+  background: var(--surface);
+  color: var(--fg);
+  flex-shrink: 0;
+}
+
+.overlay-btn-go {
+  min-width: unset;
+  padding: 8px 14px;
+  min-height: 44px;
+  font-size: 15px;
+  background: var(--accent);
+  color: #fff;
+  flex-shrink: 0;
+}
+.overlay-btn-go:active {
+  background: var(--accent-press);
 }
 
 .overlay-progress-track {
   flex: 1;
-  height: 8px;
+  height: 10px;
   border-radius: 999px;
   background: var(--surface-2);
   overflow: hidden;
+  min-width: 40px;
 }
 
 .overlay-progress-fill {
@@ -206,41 +233,84 @@ body {
   transition: width 0.2s ease;
 }
 
+/* Minimal bar */
 .overlay-bar {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .overlay-btn {
-  min-width: 120px;
+  min-width: 110px;
 }
 
-.overlay-btn-nav {
-  min-width: 150px;
-  background: var(--accent);
+/* Settings button: active/expanded state */
+.overlay.expanded .overlay-btn-settings {
+  background: var(--accent-press);
   color: #fff;
 }
-.overlay-btn-nav:active {
-  background: var(--accent-press);
+
+/* Quit button: muted red tint */
+.overlay-btn-quit {
+  background: rgba(220, 50, 50, 0.18);
+  color: #ff7070;
+  min-width: unset;
+  padding: 16px 20px;
+}
+.overlay-btn-quit:active {
+  background: rgba(220, 50, 50, 0.38);
 }
 
-.overlay-btn-more {
-  position: relative;
+/* Inline quit confirmation */
+.overlay-confirm-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid rgba(220, 50, 50, 0.3);
+  animation: confirm-slide-in 0.15s ease;
 }
 
-.overlay.expanded .overlay-btn-more {
-  background: var(--accent-press);
+.overlay-confirm-row.hidden {
+  display: none;
 }
 
-/* Expanded drawer: a vertical stack of labelled sections. */
+@keyframes confirm-slide-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.overlay-confirm-label {
+  font-size: 16px;
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.overlay-btn-cancel {
+  min-width: unset;
+  padding: 12px 20px;
+  font-size: 16px;
+}
+
+.overlay-btn-quit-now {
+  min-width: unset;
+  padding: 12px 20px;
+  font-size: 16px;
+  background: rgba(220, 50, 50, 0.3);
+  color: #ff7070;
+}
+.overlay-btn-quit-now:active {
+  background: rgba(220, 50, 50, 0.55);
+}
+
+/* Settings strip: single horizontally-scrollable row */
 .overlay-expanded {
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
   max-height: 0;
   opacity: 0;
   margin-bottom: 0;
@@ -254,60 +324,55 @@ body {
 }
 
 .overlay.expanded .overlay-expanded {
-  max-height: 800px;
+  max-height: 120px;
   opacity: 1;
-  margin-bottom: 14px;
-  padding-bottom: 14px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.overlay-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.overlay-row-label {
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.overlay-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-}
-
-.overlay-goto {
+.overlay-settings-row {
   display: flex;
   align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 2px 8px;
+  /* Hide scrollbar but keep scrolling */
+  scrollbar-width: none;
 }
 
-.overlay-goto input {
-  font-size: 18px;
-  min-height: var(--tap);
-  padding: 12px 16px;
-  width: 150px;
-  border-radius: var(--radius);
-  border: 1px solid #3a3a3e;
-  background: var(--surface);
-  color: var(--fg);
+.overlay-settings-row::-webkit-scrollbar {
+  display: none;
+}
+
+.overlay-settings-row .overlay-btn {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  min-width: unset;
+  padding: 14px 18px;
+  font-size: 17px;
+}
+
+/* Adaptive brightness button: tinted when active */
+.overlay-btn-adaptive {
+  background: var(--surface-2);
 }
 
 .overlay-brightness {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
+  gap: 10px;
+  padding: 0 12px;
   min-height: var(--tap);
-  font-size: 22px;
+  font-size: 20px;
+  flex-shrink: 0;
+  scroll-snap-align: start;
 }
 
 .overlay-brightness input[type='range'] {
-  width: 200px;
+  width: 150px;
   height: 40px;
   accent-color: var(--accent);
 }
@@ -369,10 +434,33 @@ body {
 
 .help-hints {
   text-align: center;
-  padding: 28px 24px calc(28px + env(safe-area-inset-bottom, 0px));
+  padding: 20px 24px calc(20px + env(safe-area-inset-bottom, 0px));
   color: var(--muted);
   font-size: 17px;
   line-height: 1.8;
+}
+
+.help-donate {
+  margin-top: 16px;
+  font-size: 14px;
+  opacity: 0.65;
+  line-height: 1.6;
+}
+
+.help-kofi {
+  display: inline-block;
+  margin-top: 8px;
+}
+
+.help-kofi img {
+  height: 36px;
+  vertical-align: middle;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.help-kofi:hover img {
+  opacity: 1;
 }
 
 /* ---- Error page ---- */

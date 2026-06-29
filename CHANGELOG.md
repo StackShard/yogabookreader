@@ -2,6 +2,26 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
+## [1.1.0] — 2026-06-29
+
+### UI Polish — Modernised Reader Overlay
+
+#### Controls
+- Removed redundant Prev / Next buttons from the control bar (swipe and tap-zone navigation unchanged)
+- Merged the ⚙ More / Less toggle and ⌄ Hide button into a single **⚙ Settings / ⌄ Hide** button — one tap expands the settings strip; a second tap dismisses the entire overlay
+- Removed the Exit Full-Screen button (Esc key still toggles full-screen)
+- Moved **Quit** to the primary control bar so it is always reachable without opening settings
+- Added an inline **quit confirmation row** (Really quit? / Cancel / Quit Now) that auto-dismisses after 5 seconds if untouched
+
+#### Progress & Navigation
+- Go-to-page input and **Go** button now live on the same row as the progress bar — no keyboard required
+- Progress bar is now **tappable**: tap anywhere on it to jump directly to that position in the book
+- Page label shortened to `N / T` format for compactness
+
+#### Settings Strip
+- Collapsed the four labelled setting sections (View / Reading / Display / App) into a single **horizontal-scroll row**: Fit Width · Fit Height · Full Bleed · ↔ LTR/RTL · ☀ Auto · brightness slider
+- Auto-brightness button label shortened to `☀ Auto: On / Off`
+
 ## [1.0.0] — 2026-06-28
 
 ### Initial Release

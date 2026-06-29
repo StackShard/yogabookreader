@@ -56,6 +56,7 @@ const bridge: ReaderBridge = {
   requestHelp: () => ipcRenderer.send(RendererToMain.requestHelp),
   dismissHelp: () => ipcRenderer.send(RendererToMain.dismissHelp),
   quit: () => ipcRenderer.send(RendererToMain.quit),
+  openExternal: (url: string) => ipcRenderer.send(RendererToMain.openExternal, url),
 
   getRecentFiles: (): Promise<RecentFileView[]> =>
     ipcRenderer.invoke(RendererToMain.getRecentFiles),
