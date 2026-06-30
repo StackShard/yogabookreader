@@ -657,8 +657,11 @@ body {
   z-index: 300;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
-  align-items: center;
+  /* Sit low on screen, near the "Jump Page" button in the settings strip, so
+     the thumb doesn't travel far after tapping it. */
+  align-items: flex-end;
   justify-content: center;
+  padding-bottom: 14vh;
 }
 
 .dialpad-overlay.hidden {
@@ -676,10 +679,15 @@ body {
 .dialpad-display {
   font-size: 30px;
   font-variant-numeric: tabular-nums;
-  text-align: right;
-  padding: 8px 12px 14px;
+  /* Fixed height + flex centering so the box doesn't grow when the first digit
+     creates a line box (empty state has none). Right-aligned, vertically centred. */
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 60px;
+  box-sizing: border-box;
+  padding: 0 12px;
   color: var(--fg);
-  min-height: 52px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 10px;
   letter-spacing: 0.05em;

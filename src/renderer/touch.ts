@@ -21,6 +21,8 @@ export interface NavCallbacks {
   onLongPrev?(): void;
   /** Long-press in the right tap zone: jump to last page. */
   onLongNext?(): void;
+  /** Long-press in the centre zone: page actions (save / print). */
+  onLongCenter?(): void;
 }
 
 export interface TouchOptions {
@@ -72,6 +74,12 @@ export function attachNavigation(
       longPressTimer = setTimeout(() => {
         longPressConsumed = true;
         cb.onLongNext?.();
+      }, LONG_PRESS_MS);
+    } else if (fraction >= side && fraction <= 1 - side) {
+      // Centre zone: hold for page actions (save / print).
+      longPressTimer = setTimeout(() => {
+        longPressConsumed = true;
+        cb.onLongCenter?.();
       }, LONG_PRESS_MS);
     }
   };

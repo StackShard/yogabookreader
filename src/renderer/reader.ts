@@ -5,13 +5,14 @@
  * the main process when the window was created.
  */
 
-import { resolveTarget, paintSource, clearCanvas, prefetch, resetCaches } from './render-engine.js';
+import { resolveTarget, paintSource, clearCanvas, prefetch, resetCaches, renderPdfPagePng } from './render-engine.js';
 import { attachNavigation } from './touch.js';
 import { ControlOverlay } from './overlay.js';
 import { HelpOverlay } from './help.js';
 import { showError } from './error.js';
+import { showPageMenu } from './page-menu.js';
 import { setStatus } from './toast.js';
-import type { RenderInstruction, WindowRole } from '../shared/ipc.js';
+import type { RenderInstruction, RenderTarget, WindowRole } from '../shared/ipc.js';
 import { DEFAULT_SETTINGS, type ZoomPreset } from '../core/types.js';
 import type { ResolvedSource } from './render-engine.js';
 
@@ -37,6 +38,8 @@ async function main(): Promise<void> {
   let totalPages = 0;
   let zoomPreset: ZoomPreset = DEFAULT_SETTINGS.defaultZoomPreset;
   let currentFilePath: string | null = null;
+  // The page shown in THIS window right now (per-role slot), for the page menu.
+  let currentTarget: RenderTarget | null = null;
   // Monotonic token so a slow async resolve from an earlier render can't paint
   // over a newer one during rapid page turns.
   let renderSeq = 0;
@@ -74,6 +77,34 @@ async function main(): Promise<void> {
           settings.disableAdaptiveBrightness,
         );
 
+  // Long-press the centre of either screen to save/print the page shown there.
+  // For PDFs the renderer rasterizes the page to a PNG; comics are copied by main.
+  async function pageDataUrl(target: RenderTarget): Promise<string | null> {
+    return target.kind === 'pdf' ? renderPdfPagePng(target.filePath, target.pageIndex) : null;
+  }
+  function openPageMenu(): void {
+    const target = currentTarget;
+    if (!target || target.kind === 'blank') return; // nothing on this slot (e.g. cover's blank side)
+    const pageIndex = target.pageIndex;
+    showPageMenu(pageIndex + 1, {
+      onSave: () => {
+        setStatus('Saving page…');
+        void pageDataUrl(target)
+          .then((dataUrl) => reader.savePage(pageIndex, dataUrl))
+          .then((saved) => {
+            setStatus(saved ? `Saved page ${pageIndex + 1}.` : null);
+            if (saved) setTimeout(() => setStatus(null), 1800);
+          })
+          .catch(() => setStatus(null));
+      },
+      onPrint: () => {
+        void pageDataUrl(target)
+          .then((dataUrl) => reader.printPage(pageIndex, dataUrl))
+          .catch(() => undefined);
+      },
+    });
+  }
+
   attachNavigation(
     stage,
     {
@@ -83,6 +114,7 @@ async function main(): Promise<void> {
       onDoubleTap: () => overlay?.cycleZoom(),
       onLongPrev: () => reader.jumpToPage(0),
       onLongNext: () => reader.jumpToPage(totalPages > 0 ? totalPages - 1 : 0),
+      onLongCenter: () => openPageMenu(),
     },
     { tapZoneWidth: settings.tapZoneWidth, edgeDeadZone: settings.edgeDeadZone },
   );
@@ -128,6 +160,7 @@ async function main(): Promise<void> {
 
   reader.onRender((instruction) => {
     zoomPreset = instruction.zoomPreset;
+    currentTarget = instruction.current;
     overlay?.setProgress(instruction.pages, totalPages);
     overlay?.setActiveZoom(instruction.zoomPreset);
     prefetch(instruction.prefetch, canvas.height);

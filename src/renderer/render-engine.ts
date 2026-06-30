@@ -187,6 +187,26 @@ function getRenderedPdf(filePath: string, pageIndex: number, targetHeight: numbe
 }
 
 /**
+ * Render a full PDF page to a high-resolution PNG data URL, for saving/printing
+ * a single page. Always the whole page (no half-crop), at a generous width so
+ * the exported image is crisp regardless of the on-screen zoom.
+ */
+export async function renderPdfPagePng(filePath: string, pageIndex: number): Promise<string> {
+  const TARGET_WIDTH = 1600;
+  const doc = await getPdf(filePath);
+  const page = await doc.getPage(pageIndex + 1); // pdf.js is 1-based
+  const base = page.getViewport({ scale: 1 });
+  const viewport = page.getViewport({ scale: Math.max(0.1, TARGET_WIDTH / base.width) });
+  const off = document.createElement('canvas');
+  off.width = Math.ceil(viewport.width);
+  off.height = Math.ceil(viewport.height);
+  const ctx = off.getContext('2d');
+  if (!ctx) throw new Error('No 2D context for PDF page export');
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  return off.toDataURL('image/png');
+}
+
+/**
  * Resolve a render target to a drawable source. Returns null for blank slots.
  * Does not touch the visible canvas, so the caller can discard a stale result.
  */

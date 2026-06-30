@@ -109,6 +109,12 @@ export class ReaderController {
     });
     ipcMain.on(RendererToMain.nudgeSpread, () => this.nudgeSpread());
     ipcMain.on(RendererToMain.resetSpread, () => this.resetSpread());
+    ipcMain.handle(RendererToMain.savePage, (_e, pageIndex: number, dataUrl: string | null) =>
+      this.savePage(pageIndex, dataUrl),
+    );
+    ipcMain.on(RendererToMain.printPage, (_e, pageIndex: number, dataUrl: string | null) => {
+      void this.printPage(pageIndex, dataUrl).catch((err) => logError('printPage failed:', err));
+    });
     ipcMain.on(RendererToMain.requestOverlay, () => this.showOverlay());
     ipcMain.on(RendererToMain.openLibrary, () => this.openLibraryView());
     ipcMain.on(RendererToMain.toggleFullScreen, () => this.toggleFullScreen());
@@ -335,6 +341,89 @@ export class ReaderController {
       return coverUrl(file);
     } catch {
       return null;
+    }
+  }
+
+  /** Source for one page: the comic image file on disk, or a rendered PDF PNG. */
+  private pageSource(pageIndex: number, dataUrl: string | null):
+    | { kind: 'image'; srcPath: string; ext: string }
+    | { kind: 'pdf'; bytes: Buffer; ext: string }
+    | null {
+    if (!this.session) return null;
+    if (dataUrl) {
+      const match = /^data:image\/\w+;base64,(.+)$/.exec(dataUrl);
+      if (!match) return null;
+      return { kind: 'pdf', bytes: Buffer.from(match[1], 'base64'), ext: '.png' };
+    }
+    const srcPath = this.session.imagePaths?.[pageIndex];
+    if (!srcPath) return null;
+    return { kind: 'image', srcPath, ext: path.extname(srcPath) || '.jpg' };
+  }
+
+  /** "<Title> - p<N>.<ext>" in the given dir, deduped with " (2)", " (3)", … */
+  private async uniquePagePath(dir: string, pageNumber: number, ext: string): Promise<string> {
+    const title = this.session?.describe().displayName ?? 'page';
+    const safe = title.replace(/[\\/:*?"<>|]/g, '_').trim() || 'page';
+    const base = `${safe} - p${pageNumber}`;
+    let candidate = path.join(dir, `${base}${ext}`);
+    for (let n = 2; ; n++) {
+      try {
+        await fs.access(candidate);
+        candidate = path.join(dir, `${base} (${n})${ext}`);
+      } catch {
+        return candidate; // does not exist → free to use
+      }
+    }
+  }
+
+  /** Save one page to a user-chosen file. Returns true when a file was written. */
+  private async savePage(pageIndex: number, dataUrl: string | null): Promise<boolean> {
+    const source = this.pageSource(pageIndex, dataUrl);
+    if (!source) return false;
+    const defaultPath = await this.uniquePagePath(
+      app.getPath('pictures'),
+      pageIndex + 1,
+      source.ext,
+    );
+    const result = await dialog.showSaveDialog({
+      defaultPath,
+      filters: [{ name: 'Image', extensions: [source.ext.replace(/^\./, '')] }],
+    });
+    if (result.canceled || !result.filePath) return false;
+    try {
+      if (source.kind === 'image') await fs.copyFile(source.srcPath, result.filePath);
+      else await fs.writeFile(result.filePath, source.bytes);
+      return true;
+    } catch (err) {
+      logError('savePage write failed:', err);
+      return false;
+    }
+  }
+
+  /** Print one page via the system print dialog (hidden window shows the image). */
+  private async printPage(pageIndex: number, dataUrl: string | null): Promise<void> {
+    const source = this.pageSource(pageIndex, dataUrl);
+    if (!source) return;
+    let imagePath: string;
+    if (source.kind === 'image') {
+      imagePath = source.srcPath;
+    } else {
+      const dir = path.join(app.getPath('temp'), 'yogabookreader-print');
+      await fs.mkdir(dir, { recursive: true });
+      imagePath = path.join(dir, `page-${pageIndex + 1}-${Date.now()}.png`);
+      await fs.writeFile(imagePath, source.bytes);
+    }
+    const win = new BrowserWindow({ show: false, webPreferences: { sandbox: false } });
+    const cleanup = (): void => {
+      if (!win.isDestroyed()) win.destroy();
+      if (source.kind === 'pdf') void fs.rm(imagePath, { force: true }).catch(() => undefined);
+    };
+    try {
+      await win.loadURL(coverUrl(imagePath)); // correct image mime via the privileged scheme
+      win.webContents.print({}, () => cleanup());
+    } catch (err) {
+      logError('printPage render failed:', err);
+      cleanup();
     }
   }
 
