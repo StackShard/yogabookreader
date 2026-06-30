@@ -49,6 +49,8 @@ export interface SessionInit {
   displayMode: DisplayMode;
   /** Spread to start on (derived from a persisted lastPage). */
   startPage?: number;
+  /** Persisted user phase nudges (page indices forced to start a spread alone). */
+  spreadBreaks?: number[];
 }
 
 export class ReaderSession {
@@ -68,6 +70,7 @@ export class ReaderSession {
       readingDirection: init.readingDirection,
       pageAspects: init.pageAspects,
       isSpreadEncoded: init.isSpreadEncoded,
+      spreadBreaks: init.spreadBreaks,
     };
     this.spreads = buildSpreads(this.model, this.displayMode);
     if (init.startPage !== undefined) {
@@ -121,6 +124,35 @@ export class ReaderSession {
   setSpreadEncoded(value: boolean, pageAspects: AspectClass[]): void {
     this.model = { ...this.model, isSpreadEncoded: value, pageAspects };
     this.rebuild();
+  }
+
+  /**
+   * Phase-nudge from the current page: force the page you're on to start a
+   * spread alone, re-aligning every pair after it. Non-destructive — your place
+   * is preserved across the rebuild. Toggling the same page clears that nudge.
+   */
+  nudgeSpreadHere(): void {
+    const page = this.anchorPage;
+    const breaks = new Set(this.model.spreadBreaks);
+    if (breaks.has(page)) breaks.delete(page);
+    else breaks.add(page);
+    this.model = {
+      ...this.model,
+      spreadBreaks: [...breaks].sort((a, b) => a - b),
+    };
+    this.rebuild();
+  }
+
+  /** Clear every phase nudge, restoring normal pairing. */
+  resetSpreadBreaks(): void {
+    if (!this.model.spreadBreaks?.length) return;
+    this.model = { ...this.model, spreadBreaks: [] };
+    this.rebuild();
+  }
+
+  /** Current phase nudges, for persistence. */
+  get spreadBreaks(): number[] {
+    return this.model.spreadBreaks ?? [];
   }
 
   setZoomPreset(preset: ZoomPreset): void {

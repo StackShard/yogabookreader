@@ -53,6 +53,8 @@ export interface RecentFileView {
   filePath: string;
   displayName: string;
   lastPage: number;
+  /** Last known page count, for progress display. */
+  totalPages?: number;
   lastReadAt: number;
   coverThumbnailPath?: string;
 }
@@ -85,6 +87,8 @@ export const RendererToMain = {
   toggleDirection: 'r2m:toggle-direction',
   setZoomPreset: 'r2m:set-zoom-preset',
   setSpreadEncoded: 'r2m:set-spread-encoded',
+  nudgeSpread: 'r2m:nudge-spread',
+  resetSpread: 'r2m:reset-spread',
   getRecentFiles: 'r2m:get-recent-files',
   clearRecentFiles: 'r2m:clear-recent-files',
   removeRecentFile: 'r2m:remove-recent-file',
@@ -96,6 +100,11 @@ export const RendererToMain = {
   dismissHelp: 'r2m:dismiss-help',
   quit: 'r2m:quit',
   openExternal: 'r2m:open-external',
+  openContainingFolder: 'r2m:open-containing-folder',
+  pruneMissingRecentFiles: 'r2m:prune-missing-recent-files',
+  clearCoverCache: 'r2m:clear-cover-cache',
+  getLayoutInfo: 'r2m:get-layout-info',
+  getAppInfo: 'r2m:get-app-info',
 } as const;
 
 /** Channels from main → renderer (webContents.send). */
@@ -142,6 +151,10 @@ export interface ReaderBridge {
   toggleDirection(): void;
   setZoomPreset(preset: ZoomPreset): void;
   setSpreadEncoded(value: boolean | undefined): void;
+  /** Phase-nudge spread pairing from the current page (toggles at that page). */
+  nudgeSpread(): void;
+  /** Clear all phase nudges, restoring normal pairing. */
+  resetSpread(): void;
   requestOverlay(): void;
   toggleFullScreen(): void;
   setAdaptiveBrightnessDisabled(disabled: boolean): void;
@@ -149,15 +162,23 @@ export interface ReaderBridge {
   dismissHelp(): void;
   quit(): void;
   openExternal(url: string): void;
+  /** Reveal a file in the OS file manager (Explorer). */
+  openContainingFolder(filePath: string): void;
 
   getRecentFiles(): Promise<RecentFileView[]>;
   clearRecentFiles(): void;
   removeRecentFile(filePath: string): void;
+  /** Drop recent entries whose files no longer exist; returns removed paths. */
+  pruneMissingRecentFiles(): Promise<string[]>;
+  /** Delete all cached cover thumbnails. */
+  clearCoverCache(): Promise<void>;
   getSettings(): Promise<AppSettings>;
   getLibrary(): Promise<LibraryGroup[]>;
   getLibraryCached(): Promise<LibraryGroup[]>;
   pickFolder(): Promise<LibraryGroup[]>;
   getResumeInfo(): Promise<ResumeInfo | null>;
+  getLayoutInfo(): Promise<LayoutInfo>;
+  getAppInfo(): Promise<AppInfo>;
   getCachedCover(filePath: string): Promise<string | null>;
   getCoverSource(filePath: string): Promise<CoverSource | null>;
   saveCover(filePath: string, dataUrl: string): Promise<string | null>;
@@ -168,6 +189,22 @@ export interface LibraryItemView {
   filePath: string;
   displayName: string;
   type: DocumentType;
+  /** Last-read page (0-based) and known page count, for progress display. */
+  lastPage?: number;
+  totalPages?: number;
+}
+
+/** Display-layout summary for the splash single-/dual-screen diagnostic. */
+export interface LayoutInfo {
+  mode: 'dual' | 'single' | 'ambiguous';
+  displayCount: number;
+  portraitCount: number;
+}
+
+/** App version + build identifier, shown on the help screen. */
+export interface AppInfo {
+  version: string;
+  commit: string;
 }
 
 /** A sub-folder's worth of library items (one section in the gallery). */

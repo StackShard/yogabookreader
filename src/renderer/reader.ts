@@ -61,6 +61,8 @@ async function main(): Promise<void> {
             onJump: (p) => reader.jumpToPage(p),
             onToggleDirection: () => reader.toggleDirection(),
             onSetZoom: (preset) => reader.setZoomPreset(preset),
+            onNudgeSpread: () => reader.nudgeSpread(),
+            onResetSpread: () => reader.resetSpread(),
             onOpenLibrary: () => reader.openLibrary(),
             onToggleFullScreen: () => reader.toggleFullScreen(),
             onQuit: () => reader.quit(),
@@ -146,7 +148,13 @@ async function main(): Promise<void> {
 
   reader.onShowError((error) => {
     loadingEl?.classList.add('hidden');
-    showError(stage, error);
+    showError(stage, error, {
+      onPickFile: () => reader.pickFile(),
+      onRemoveRecent: (filePath) => {
+        reader.removeRecentFile(filePath);
+        reader.openLibrary();
+      },
+    });
   });
   reader.onShowOverlay(() => overlay?.show());
   reader.onShowHelp(() => help.show());

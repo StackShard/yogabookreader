@@ -12,11 +12,25 @@ export interface GalleryItem {
   filePath: string;
   displayName: string;
   subtitle?: string;
+  /** Last-read page (0-based) and known page count, for progress display. */
+  lastPage?: number;
+  totalPages?: number;
+}
+
+/** "42 / 180" when the total is known, else "Page 42", else the raw subtitle. */
+function progressSubtitle(item: GalleryItem): string | undefined {
+  if (item.totalPages && item.totalPages > 0) {
+    return `${(item.lastPage ?? 0) + 1} / ${item.totalPages}`;
+  }
+  if (item.lastPage !== undefined && item.lastPage > 0) {
+    return `Page ${item.lastPage + 1}`;
+  }
+  return item.subtitle;
 }
 
 function showTileContextMenu(
   item: GalleryItem,
-  onRemove: (filePath: string) => void,
+  onRemove?: (filePath: string) => void,
 ): void {
   document.querySelector('.tile-ctx-backdrop')?.remove();
 
@@ -29,15 +43,29 @@ function showTileContextMenu(
   const label = document.createElement('div');
   label.className = 'tile-ctx-label';
   label.textContent = item.displayName;
+  menu.appendChild(label);
 
-  const removeBtn = document.createElement('button');
-  removeBtn.className = 'tile-ctx-remove';
-  removeBtn.textContent = 'Remove from Recent';
-  removeBtn.addEventListener('click', (e) => {
+  const revealBtn = document.createElement('button');
+  revealBtn.className = 'tile-ctx-item';
+  revealBtn.textContent = 'Open containing folder';
+  revealBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     backdrop.remove();
-    onRemove(item.filePath);
+    window.reader.openContainingFolder(item.filePath);
   });
+  menu.appendChild(revealBtn);
+
+  if (onRemove) {
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'tile-ctx-remove';
+    removeBtn.textContent = 'Remove from Recent';
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      backdrop.remove();
+      onRemove(item.filePath);
+    });
+    menu.appendChild(removeBtn);
+  }
 
   const cancelBtn = document.createElement('button');
   cancelBtn.className = 'tile-ctx-cancel';
@@ -47,7 +75,7 @@ function showTileContextMenu(
     backdrop.remove();
   });
 
-  menu.append(label, removeBtn, cancelBtn);
+  menu.appendChild(cancelBtn);
   backdrop.appendChild(menu);
   backdrop.addEventListener('click', () => backdrop.remove());
   document.body.appendChild(backdrop);
@@ -68,36 +96,41 @@ function tile(
     onOpen(item.filePath);
   });
 
-  if (onRemoveRecent) {
-    let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-    let startX = 0;
-    let startY = 0;
+  // Long-press (or right-click) opens the per-tile menu: reveal in Explorer for
+  // any tile, plus Remove from Recent on the recent shelf.
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  let startX = 0;
+  let startY = 0;
 
-    el.addEventListener('pointerdown', (e) => {
-      startX = e.clientX;
-      startY = e.clientY;
-      longPressConsumed = false;
-      longPressTimer = setTimeout(() => {
-        longPressTimer = null;
-        longPressConsumed = true;
-        showTileContextMenu(item, onRemoveRecent!);
-      }, 500);
-    });
+  el.addEventListener('pointerdown', (e) => {
+    startX = e.clientX;
+    startY = e.clientY;
+    longPressConsumed = false;
+    longPressTimer = setTimeout(() => {
+      longPressTimer = null;
+      longPressConsumed = true;
+      showTileContextMenu(item, onRemoveRecent);
+    }, 500);
+  });
 
-    el.addEventListener('pointermove', (e) => {
-      if (!longPressTimer) return;
-      if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-      }
-    });
+  el.addEventListener('pointermove', (e) => {
+    if (!longPressTimer) return;
+    if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  });
 
-    const cancelLp = () => {
-      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
-    };
-    el.addEventListener('pointerup', cancelLp);
-    el.addEventListener('pointercancel', cancelLp);
-  }
+  const cancelLp = () => {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+  };
+  el.addEventListener('pointerup', cancelLp);
+  el.addEventListener('pointercancel', cancelLp);
+
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    showTileContextMenu(item, onRemoveRecent);
+  });
 
   const cover = document.createElement('div');
   cover.className = 'tile-cover tile-cover-placeholder';
@@ -121,10 +154,11 @@ function tile(
   name.textContent = item.displayName;
 
   el.append(cover, name);
-  if (item.subtitle) {
+  const subtitle = progressSubtitle(item);
+  if (subtitle) {
     const sub = document.createElement('span');
     sub.className = 'tile-sub';
-    sub.textContent = item.subtitle;
+    sub.textContent = subtitle;
     el.appendChild(sub);
   }
   return el;
@@ -199,7 +233,8 @@ export function recentToGalleryItem(f: RecentFileView): GalleryItem {
   return {
     filePath: f.filePath,
     displayName: f.displayName,
-    subtitle: `Page ${f.lastPage + 1}`,
+    lastPage: f.lastPage,
+    totalPages: f.totalPages,
   };
 }
 
@@ -207,6 +242,9 @@ export function libraryToGalleryItem(f: LibraryItemView): GalleryItem {
   return {
     filePath: f.filePath,
     displayName: f.displayName,
+    // Show reading progress once started; otherwise the document type.
     subtitle: f.type.toUpperCase(),
+    lastPage: f.lastPage,
+    totalPages: f.totalPages,
   };
 }

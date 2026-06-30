@@ -99,8 +99,21 @@ export function normalizePerFileState(
     ),
     zoomPreset: pickEnum(raw.zoomPreset, ZOOM_PRESETS, settings.defaultZoomPreset),
   };
+  if (typeof raw.totalPages === 'number' && raw.totalPages > 0) {
+    state.totalPages = Math.floor(raw.totalPages);
+  }
   if (typeof raw.isSpreadEncoded === 'boolean') {
     state.isSpreadEncoded = raw.isSpreadEncoded;
+  }
+  if (Array.isArray(raw.spreadBreaks)) {
+    const breaks = [
+      ...new Set(
+        raw.spreadBreaks.filter(
+          (v): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0,
+        ),
+      ),
+    ].sort((a, b) => a - b);
+    if (breaks.length > 0) state.spreadBreaks = breaks;
   }
   return state;
 }
@@ -130,7 +143,7 @@ export function deserialize(raw: unknown): PersistedState {
   if (Array.isArray(raw.recentFiles)) {
     for (const entry of raw.recentFiles) {
       if (!isObject(entry) || typeof entry.filePath !== 'string') continue;
-      recentFiles.push({
+      const recent: RecentFile = {
         filePath: entry.filePath,
         displayName:
           typeof entry.displayName === 'string' ? entry.displayName : entry.filePath,
@@ -139,11 +152,14 @@ export function deserialize(raw: unknown): PersistedState {
             ? Math.floor(entry.lastPage)
             : 0,
         lastReadAt: typeof entry.lastReadAt === 'number' ? entry.lastReadAt : 0,
-        coverThumbnailPath:
-          typeof entry.coverThumbnailPath === 'string'
-            ? entry.coverThumbnailPath
-            : undefined,
-      });
+      };
+      if (typeof entry.totalPages === 'number' && entry.totalPages > 0) {
+        recent.totalPages = Math.floor(entry.totalPages);
+      }
+      if (typeof entry.coverThumbnailPath === 'string') {
+        recent.coverThumbnailPath = entry.coverThumbnailPath;
+      }
+      recentFiles.push(recent);
     }
   }
 

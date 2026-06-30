@@ -1,0 +1,35 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Simplified, high-contrast variant for 16-32px: a bold open book that
+       fills the frame, no fine text lines, thick strokes. -->
+  <defs>
+    <linearGradient id="bgS" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2b31"/>
+      <stop offset="1" stop-color="#0d0d0f"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Full-bleed rounded square (smaller radius reads better when tiny) -->
+  <rect x="0" y="0" width="1024" height="1024" rx="170" fill="url(#bgS)"/>
+
+  <!-- Open book, enlarged to ~84% of the frame, bold accent boards + bright pages -->
+  <g>
+    <!-- Accent boards -->
+    <path d="M96 250 C 270 196, 452 200, 512 268 L 512 836 C 452 768, 270 764, 96 818 Z" fill="#2f7be0"/>
+    <path d="M928 250 C 754 196, 572 200, 512 268 L 512 836 C 572 768, 754 764, 928 818 Z" fill="#5aa6ff"/>
+
+    <!-- Pages (bright, so the book reads even at 16px) -->
+    <path d="M150 288 C 300 240, 452 244, 500 300 L 500 792 C 452 740, 300 736, 150 780 Z" fill="#ffffff"/>
+    <path d="M874 288 C 724 240, 572 244, 524 300 L 524 792 C 572 740, 724 736, 874 780 Z" fill="#eef3fb"/>
+
+    <!-- Bold centre spine -->
+    <rect x="498" y="268" width="28" height="568" rx="14" fill="#13203a"/>
+
+    <!-- Two thick guide lines per page for "text" hint without clutter -->
+    <g fill="#9bb6dd">
+      <rect x="214" y="430" width="232" height="40" rx="20"/>
+      <rect x="214" y="540" width="232" height="40" rx="20"/>
+      <rect x="578" y="430" width="232" height="40" rx="20"/>
+      <rect x="578" y="540" width="232" height="40" rx="20"/>
+    </g>
+  </g>
+</svg>

@@ -72,7 +72,13 @@ export class HelpOverlay {
     donatePara.append(coffeeLink, '. Not a subscription, just a one-time thanks.');
     donate.appendChild(donatePara);
 
-    hints.append(tips, donate);
+    const version = document.createElement('p');
+    version.className = 'help-version';
+    void window.reader.getAppInfo().then((info) => {
+      version.textContent = `Yoga Book Reader v${info.version} (build ${info.commit})`;
+    });
+
+    hints.append(tips, donate, version);
     return hints;
   }
 

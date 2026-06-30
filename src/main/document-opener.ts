@@ -100,6 +100,7 @@ export async function analyzeFile(
     zoomPreset,
     displayMode,
     startPage: fileState?.lastPage,
+    spreadBreaks: fileState?.spreadBreaks,
   });
 
   log('opened (provisional):', totalPages, 'pages, mode =', displayMode);

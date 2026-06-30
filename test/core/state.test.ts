@@ -98,6 +98,38 @@ describe('deserialize', () => {
     const state = deserialize({ files: { '/a.pdf': { filePath: '/a.pdf', lastPage: -5 } } });
     expect(state.files['/a.pdf'].lastPage).toBe(0);
   });
+
+  it('preserves known page counts for progress displays', () => {
+    const state = deserialize({
+      recentFiles: [{ filePath: '/a.pdf', displayName: 'A', lastPage: 4, totalPages: 20 }],
+      files: { '/a.pdf': { filePath: '/a.pdf', lastPage: 4, totalPages: 20 } },
+    });
+    expect(state.recentFiles[0].totalPages).toBe(20);
+    expect(state.files['/a.pdf'].totalPages).toBe(20);
+  });
+
+  it('ignores non-positive totalPages', () => {
+    const state = deserialize({
+      files: { '/a.pdf': { filePath: '/a.pdf', lastPage: 0, totalPages: 0 } },
+    });
+    expect(state.files['/a.pdf'].totalPages).toBeUndefined();
+  });
+
+  it('persists spread phase nudges, sorted and sanitized', () => {
+    const state = deserialize({
+      files: {
+        '/a.cbz': { filePath: '/a.cbz', lastPage: 0, spreadBreaks: [5, 3, 3, -1, 2.5, 'x'] },
+      },
+    });
+    expect(state.files['/a.cbz'].spreadBreaks).toEqual([3, 5]);
+  });
+
+  it('omits spreadBreaks when none are valid', () => {
+    const state = deserialize({
+      files: { '/a.cbz': { filePath: '/a.cbz', lastPage: 0, spreadBreaks: [] } },
+    });
+    expect(state.files['/a.cbz'].spreadBreaks).toBeUndefined();
+  });
 });
 
 describe('round-trip', () => {

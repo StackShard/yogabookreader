@@ -58,6 +58,8 @@ export interface PerFileState {
   filePath: string;
   /** 0-based index of the page currently anchoring the view. */
   lastPage: number;
+  /** Last known page count, used for progress displays. */
+  totalPages?: number;
   readingDirection: ReadingDirection;
   zoomPreset: ZoomPreset;
   /**
@@ -65,6 +67,13 @@ export interface PerFileState {
    * auto-detected value; `true`/`false` = user forced it (PRD US#22).
    */
   isSpreadEncoded?: boolean;
+  /**
+   * User-applied spread phase breaks: 0-based page indices that should start a
+   * spread alone, inserting a one-page blank so every pair downstream re-aligns.
+   * Fixes a skipped/mis-scanned page without moving the reading position. Empty
+   * or undefined = normal pairing.
+   */
+  spreadBreaks?: number[];
 }
 
 /** A document as the spread/navigation logic needs to understand it. */
@@ -75,6 +84,11 @@ export interface DocumentModel {
   pageAspects: AspectClass[];
   /** Effective spread-encoding flag after applying any manual override. */
   isSpreadEncoded: boolean;
+  /**
+   * 0-based page indices that should start a spread alone (user phase nudges).
+   * Each inserts a one-page blank so pairing re-aligns from that page onward.
+   */
+  spreadBreaks?: number[];
 }
 
 /** An entry on the splash screen's recent-files list (PRD §File Management). */
@@ -82,6 +96,8 @@ export interface RecentFile {
   filePath: string;
   displayName: string;
   lastPage: number;
+  /** Last known page count, used for progress displays. */
+  totalPages?: number;
   /** Epoch millis of last read. */
   lastReadAt: number;
   /** Path to the cached cover thumbnail, if generated. */
