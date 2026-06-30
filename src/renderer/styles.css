@@ -792,3 +792,111 @@ body {
 .tile-ctx-cancel:active {
   background: var(--surface);
 }
+
+.tile-ctx-item {
+  min-height: 56px;
+  font-size: 17px;
+  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--fg);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.tile-ctx-item:active {
+  background: var(--surface);
+}
+
+/* ---- Section title rows + compact tool buttons ---- */
+.section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.section-title-row h2 {
+  margin-right: auto;
+}
+
+.compact-btn {
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+/* ---- Error recovery actions + collapsible details ---- */
+.error-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.error-details {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.error-details.hidden {
+  display: none;
+}
+
+/* ---- Help-screen version line ---- */
+.help-version {
+  margin-top: 18px;
+  font-size: 12px;
+  opacity: 0.45;
+  letter-spacing: 0.02em;
+}
+
+/* ---- Single-screen layout diagnostic ---- */
+.layout-diag {
+  margin: 0 0 16px;
+}
+
+.layout-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.layout-chip-icon {
+  color: var(--accent);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.layout-chip-why {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.layout-why {
+  margin-top: 10px;
+  max-width: 560px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.layout-why.hidden {
+  display: none;
+}

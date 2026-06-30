@@ -5,13 +5,14 @@ import type { AspectClass, DocumentModel, ReadingDirection } from '../../src/cor
 function doc(
   totalPages: number,
   readingDirection: ReadingDirection,
-  opts: { aspects?: AspectClass[]; isSpreadEncoded?: boolean } = {},
+  opts: { aspects?: AspectClass[]; isSpreadEncoded?: boolean; spreadBreaks?: number[] } = {},
 ): DocumentModel {
   return {
     totalPages,
     readingDirection,
     pageAspects: opts.aspects ?? Array(totalPages).fill('single'),
     isSpreadEncoded: opts.isSpreadEncoded ?? false,
+    spreadBreaks: opts.spreadBreaks,
   };
 }
 
@@ -136,6 +137,51 @@ describe('buildSpreads — edge cases', () => {
   it('returns no spreads for an empty document', () => {
     expect(buildSpreads(doc(0, 'ltr'), 'dual')).toEqual([]);
     expect(buildSpreads(doc(0, 'ltr'), 'single')).toEqual([]);
+  });
+});
+
+describe('buildSpreads — phase nudges (spreadBreaks)', () => {
+  it('no breaks pairs normally', () => {
+    expect(buildSpreads(doc(6, 'ltr', { spreadBreaks: [] }), 'dual')).toEqual(
+      buildSpreads(doc(6, 'ltr'), 'dual'),
+    );
+  });
+
+  it('a break makes that page lone and re-pairs everything after it', () => {
+    // Page index 3 was the start of (3,4); nudging it shifts the pairing by one.
+    expect(buildSpreads(doc(6, 'ltr', { spreadBreaks: [3] }), 'dual')).toEqual([
+      { left: null, right: { pageIndex: 0 } }, // cover
+      { left: { pageIndex: 1 }, right: { pageIndex: 2 } },
+      { left: { pageIndex: 3 }, right: null }, // forced lone (the nudge)
+      { left: { pageIndex: 4 }, right: { pageIndex: 5 } }, // re-aligned
+    ]);
+  });
+
+  it('a break on a high page forces its partner to stand alone too', () => {
+    // Break at 2 means 1 can no longer pair with 2; both become lone, then 3,4 pair.
+    expect(buildSpreads(doc(6, 'ltr', { spreadBreaks: [2] }), 'dual')).toEqual([
+      { left: null, right: { pageIndex: 0 } },
+      { left: { pageIndex: 1 }, right: null },
+      { left: { pageIndex: 2 }, right: null },
+      { left: { pageIndex: 3 }, right: { pageIndex: 4 } },
+      { left: { pageIndex: 5 }, right: null },
+    ]);
+  });
+
+  it('RTL puts the lone nudged page on the right', () => {
+    expect(buildSpreads(doc(6, 'rtl', { spreadBreaks: [3] }), 'dual')).toEqual([
+      { left: { pageIndex: 0 }, right: null }, // cover (RTL)
+      { left: { pageIndex: 2 }, right: { pageIndex: 1 } },
+      { left: null, right: { pageIndex: 3 } }, // forced lone (RTL side)
+      { left: { pageIndex: 5 }, right: { pageIndex: 4 } },
+    ]);
+  });
+
+  it('never drops or duplicates a page when nudged', () => {
+    const seen = buildSpreads(doc(7, 'ltr', { spreadBreaks: [3, 5] }), 'dual')
+      .flatMap(pagesInSpread)
+      .sort((a, b) => a - b);
+    expect(seen).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 });
 

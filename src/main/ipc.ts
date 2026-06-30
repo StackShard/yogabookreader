@@ -8,7 +8,7 @@
 
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, screen, shell } from 'electron';
 import {
   type DisplayMode,
   type ReadingDirection,
@@ -17,7 +17,9 @@ import {
 import {
   MainToRenderer,
   RendererToMain,
+  type AppInfo,
   type CoverSource,
+  type LayoutInfo,
   type LibraryGroup,
   type LibraryItemView,
   type ReaderError,
@@ -38,6 +40,7 @@ import { log, logError } from './log.js';
 import {
   clearRecentFiles,
   getFileState,
+  getFileStates,
   getLibraryCache,
   getRecentFiles,
   getSettings,
@@ -48,6 +51,10 @@ import {
   updateSettings,
 } from './state-store.js';
 import { BrightnessController } from './brightness-controller.js';
+
+/** Short git commit injected at build time (see electron.vite.config.ts). */
+declare const __BUILD_COMMIT__: string | undefined;
+const BUILD_COMMIT = typeof __BUILD_COMMIT__ === 'string' ? __BUILD_COMMIT__ : 'dev';
 
 export class ReaderController {
   private session: ReaderSession | null = null;
@@ -100,6 +107,8 @@ export class ReaderController {
     ipcMain.on(RendererToMain.setSpreadEncoded, (_e, value: boolean | undefined) => {
       void this.setSpreadEncoded(value);
     });
+    ipcMain.on(RendererToMain.nudgeSpread, () => this.nudgeSpread());
+    ipcMain.on(RendererToMain.resetSpread, () => this.resetSpread());
     ipcMain.on(RendererToMain.requestOverlay, () => this.showOverlay());
     ipcMain.on(RendererToMain.openLibrary, () => this.openLibraryView());
     ipcMain.on(RendererToMain.toggleFullScreen, () => this.toggleFullScreen());
@@ -110,6 +119,7 @@ export class ReaderController {
         filePath: f.filePath,
         displayName: f.displayName,
         lastPage: f.lastPage,
+        totalPages: f.totalPages,
         lastReadAt: f.lastReadAt,
         coverThumbnailPath: f.coverThumbnailPath,
       })),
@@ -120,6 +130,16 @@ export class ReaderController {
     ipcMain.on(RendererToMain.removeRecentFile, (_e, filePath: string) => {
       removeRecentFile(filePath);
     });
+    ipcMain.on(RendererToMain.openContainingFolder, (_e, filePath: string) => {
+      shell.showItemInFolder(path.normalize(filePath));
+    });
+    ipcMain.handle(RendererToMain.pruneMissingRecentFiles, () => this.pruneMissingRecentFiles());
+    ipcMain.handle(RendererToMain.clearCoverCache, () => this.clearCoverCache());
+    ipcMain.handle(RendererToMain.getLayoutInfo, (): LayoutInfo => this.getLayoutInfo());
+    ipcMain.handle(RendererToMain.getAppInfo, (): AppInfo => ({
+      version: app.getVersion(),
+      commit: BUILD_COMMIT,
+    }));
     ipcMain.handle(RendererToMain.getSettings, () => getSettings());
     ipcMain.handle(RendererToMain.getLibrary, () => this.getLibrary());
     ipcMain.handle(RendererToMain.getLibraryCached, () => this.getLibraryCached());
@@ -162,6 +182,35 @@ export class ReaderController {
     if (!this.session) return null;
     const info = this.session.describe();
     return { filePath: info.filePath, displayName: info.displayName };
+  }
+
+  /** Single-/dual-screen summary for the splash layout diagnostic. */
+  private getLayoutInfo(): LayoutInfo {
+    const displays = screen.getAllDisplays();
+    return {
+      mode: currentPlacement().mode,
+      displayCount: displays.length,
+      portraitCount: displays.filter((d) => d.bounds.height > d.bounds.width).length,
+    };
+  }
+
+  /** Remove recent entries whose files are gone; returns the removed paths. */
+  private async pruneMissingRecentFiles(): Promise<string[]> {
+    const missing: string[] = [];
+    for (const f of getRecentFiles()) {
+      try {
+        await fs.access(f.filePath);
+      } catch {
+        missing.push(f.filePath);
+        removeRecentFile(f.filePath);
+      }
+    }
+    return missing;
+  }
+
+  /** Delete every cached cover thumbnail; covers regenerate on demand. */
+  private async clearCoverCache(): Promise<void> {
+    await fs.rm(thumbnailCacheDir(), { recursive: true, force: true });
   }
 
   /** Return from the library to the current document without reloading it. */
@@ -209,10 +258,18 @@ export class ReaderController {
     const root = getSettings().rootFolder;
     if (!root) return [];
     const entries = await scanFolder(root);
+    const fileStates = getFileStates();
     const groups = new Map<string, LibraryItemView[]>();
     for (const e of entries) {
       const folder = e.relativeDir === '' ? 'Library' : e.relativeDir;
-      const item: LibraryItemView = { filePath: e.filePath, displayName: e.displayName, type: e.type };
+      const fileState = fileStates[e.filePath];
+      const item: LibraryItemView = {
+        filePath: e.filePath,
+        displayName: e.displayName,
+        type: e.type,
+        lastPage: fileState?.lastPage,
+        totalPages: fileState?.totalPages,
+      };
       const list = groups.get(folder);
       if (list) list.push(item);
       else groups.set(folder, [item]);
@@ -345,6 +402,7 @@ export class ReaderController {
         filePath,
         displayName: result.displayName,
         lastPage: this.session.anchorPage,
+        totalPages: this.session.describe().totalPages,
         lastReadAt: Date.now(),
       });
 
@@ -417,6 +475,36 @@ export class ReaderController {
     if (token === this.openToken) this.broadcastStatus(null);
   }
 
+  /** Phase-nudge the spread pairing from the current page (toggles at that page). */
+  private nudgeSpread(): void {
+    if (!this.session) return;
+    this.session.nudgeSpreadHere();
+    this.persistSpreadBreaks();
+    this.broadcastRender();
+  }
+
+  /** Clear all phase nudges for the open document. */
+  private resetSpread(): void {
+    if (!this.session) return;
+    this.session.resetSpreadBreaks();
+    this.persistSpreadBreaks();
+    this.broadcastRender();
+  }
+
+  /** Persist the current phase nudges per-file (mirrors the isSpreadEncoded override). */
+  private persistSpreadBreaks(): void {
+    if (!this.session) return;
+    const info = this.session.describe();
+    saveFileState({
+      filePath: info.filePath,
+      lastPage: this.session.anchorPage,
+      totalPages: info.totalPages,
+      readingDirection: info.readingDirection,
+      zoomPreset: info.zoomPreset,
+      spreadBreaks: this.session.spreadBreaks,
+    });
+  }
+
   private toggleDirection(): void {
     if (!this.session) return;
     const next: ReadingDirection = this.session.readingDirection === 'ltr' ? 'rtl' : 'ltr';
@@ -486,9 +574,18 @@ export class ReaderController {
       saveFileState({
         filePath: info.filePath,
         lastPage: this.session.anchorPage,
+        totalPages: info.totalPages,
         readingDirection: info.readingDirection,
         zoomPreset: info.zoomPreset,
         isSpreadEncoded: info.isSpreadEncoded,
+      });
+      // Keep the recent entry's progress in step with where the reader is now.
+      recordRecentFile({
+        filePath: info.filePath,
+        displayName: info.displayName,
+        lastPage: this.session.anchorPage,
+        totalPages: info.totalPages,
+        lastReadAt: Date.now(),
       });
     }
     this.broadcastRender();

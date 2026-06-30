@@ -22,13 +22,29 @@
         <h1>Yoga Book Reader</h1>
       </header>
       <main class="splash-scroll">
+        <!-- Single-/dual-screen diagnostic (shown only in single-screen mode). -->
+        <div id="layout-diag" class="layout-diag" hidden>
+          <button id="layout-chip" class="layout-chip" type="button">
+            <span class="layout-chip-icon" aria-hidden="true">▭</span>
+            <span id="layout-chip-label">Single-screen mode</span>
+            <span class="layout-chip-why">why?</span>
+          </button>
+          <div id="layout-why" class="layout-why hidden"></div>
+        </div>
         <section>
-          <h2>Recent <button id="clear-recent" class="ghost-btn" style="font-size:14px;min-height:auto;padding:6px 14px;margin-left:12px;vertical-align:middle">Clear</button></h2>
+          <div class="section-title-row">
+            <h2>Recent</h2>
+            <button id="clean-missing" class="ghost-btn compact-btn">Clean missing</button>
+            <button id="clear-recent" class="ghost-btn compact-btn">Clear</button>
+          </div>
           <div id="recent" class="gallery"></div>
         </section>
         <div class="section-divider"></div>
         <section>
-          <h2>Library</h2>
+          <div class="section-title-row">
+            <h2>Library</h2>
+            <button id="regen-covers" class="ghost-btn compact-btn">Regenerate covers</button>
+          </div>
           <p id="library-folder" class="library-folder"></p>
           <div id="library"></div>
         </section>

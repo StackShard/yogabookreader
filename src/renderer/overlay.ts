@@ -26,6 +26,8 @@ export interface OverlayCallbacks {
   onJump(pageIndex: number): void;
   onToggleDirection(): void;
   onSetZoom(preset: ZoomPreset): void;
+  onNudgeSpread(): void;
+  onResetSpread(): void;
   onOpenLibrary(): void;
   onToggleFullScreen(): void;
   onQuit(): void;
@@ -88,7 +90,10 @@ export class ControlOverlay {
       zoomFitHeight,
       zoomFullBleed,
       this.button('↔ LTR/RTL', this.settingsAction(() => this.cb.onToggleDirection())),
-      this.button('# Pg', () => this.showDialPad(), 'overlay-btn-page'),
+      this.button('Jump Page', () => this.showDialPad(), 'overlay-btn-page'),
+      // Spread alignment: nudge one page (fixes a skipped/mis-scanned page) and reset.
+      this.button('⇥ Nudge', this.settingsAction(() => this.cb.onNudgeSpread())),
+      this.button('Reset align', this.settingsAction(() => this.cb.onResetSpread())),
     );
 
     const settingsWrap = document.createElement('div');

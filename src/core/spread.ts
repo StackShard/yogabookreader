@@ -95,6 +95,10 @@ export function buildSpreads(
     return spreads;
   }
 
+  // User phase nudges: pages forced to start a spread alone, re-aligning every
+  // pair after them (fixes a skipped/mis-scanned page). See PerFileState.
+  const breaks = new Set(doc.spreadBreaks);
+
   const spreads: SpreadLayout[] = [];
   let i = 0;
 
@@ -111,12 +115,20 @@ export function buildSpreads(
       i += 1;
       continue;
     }
+    // A phase break makes this page lone (blank opposite screen) and shifts the
+    // pairing of everything after it by one — the non-destructive "nudge".
+    if (breaks.has(i)) {
+      spreads.push(lonePairLayout(doc, i));
+      i += 1;
+      continue;
+    }
     const next = i + 1;
-    if (next < n && !isWideAspect(doc, next)) {
+    if (next < n && !isWideAspect(doc, next) && !breaks.has(next)) {
       spreads.push(pairLayout(doc, i, next));
       i += 2;
     } else {
-      // Trailing odd page, or the next page is wide and needs its own spread.
+      // Trailing odd page, the next page is wide, or the next page is a forced
+      // break that must start its own spread — so this page sits alone.
       spreads.push(lonePairLayout(doc, i));
       i += 1;
     }

@@ -49,6 +49,8 @@ const bridge: ReaderBridge = {
   setZoomPreset: (preset: ZoomPreset) => ipcRenderer.send(RendererToMain.setZoomPreset, preset),
   setSpreadEncoded: (value: boolean | undefined) =>
     ipcRenderer.send(RendererToMain.setSpreadEncoded, value),
+  nudgeSpread: () => ipcRenderer.send(RendererToMain.nudgeSpread),
+  resetSpread: () => ipcRenderer.send(RendererToMain.resetSpread),
   requestOverlay: () => ipcRenderer.send(RendererToMain.requestOverlay),
   toggleFullScreen: () => ipcRenderer.send(RendererToMain.toggleFullScreen),
   setAdaptiveBrightnessDisabled: (disabled: boolean) =>
@@ -57,12 +59,18 @@ const bridge: ReaderBridge = {
   dismissHelp: () => ipcRenderer.send(RendererToMain.dismissHelp),
   quit: () => ipcRenderer.send(RendererToMain.quit),
   openExternal: (url: string) => ipcRenderer.send(RendererToMain.openExternal, url),
+  openContainingFolder: (filePath: string) =>
+    ipcRenderer.send(RendererToMain.openContainingFolder, filePath),
 
   getRecentFiles: (): Promise<RecentFileView[]> =>
     ipcRenderer.invoke(RendererToMain.getRecentFiles),
   clearRecentFiles: () => ipcRenderer.send(RendererToMain.clearRecentFiles),
   removeRecentFile: (filePath: string) => ipcRenderer.send(RendererToMain.removeRecentFile, filePath),
+  pruneMissingRecentFiles: () => ipcRenderer.invoke(RendererToMain.pruneMissingRecentFiles),
+  clearCoverCache: () => ipcRenderer.invoke(RendererToMain.clearCoverCache),
   getSettings: () => ipcRenderer.invoke(RendererToMain.getSettings),
+  getLayoutInfo: () => ipcRenderer.invoke(RendererToMain.getLayoutInfo),
+  getAppInfo: () => ipcRenderer.invoke(RendererToMain.getAppInfo),
   getLibrary: () => ipcRenderer.invoke(RendererToMain.getLibrary),
   getLibraryCached: () => ipcRenderer.invoke(RendererToMain.getLibraryCached),
   pickFolder: () => ipcRenderer.invoke(RendererToMain.pickFolder),
