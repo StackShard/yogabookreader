@@ -2,6 +2,37 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
+## [1.1.3] — 2026-06-30
+
+### Spread Alignment
+- **Spread nudge** — fix a skipped or mis-scanned page that throws off every
+  two-page pair from that point on. **⇥ Nudge** (in the settings strip) forces
+  the current page to start a spread alone, re-aligning everything after it
+  without moving your place; **Reset align** clears it. Saved per document, and
+  it supports more than one nudge for books with several bad pages.
+
+### Reading Progress
+- Recent and Library tiles show **page-of-total** progress (e.g. `42 / 180`),
+  falling back to `Page 42`, then the document type.
+
+### Library Tools
+- **Open containing folder** — long-press or right-click any tile to reveal the
+  file in Explorer.
+- **Clean missing** — drop recent entries whose files were moved or deleted.
+- **Regenerate covers** — clear the thumbnail cache and rebuild covers.
+
+### Reader & Help
+- **Better error recovery** — file-open errors offer *Choose another file*,
+  *Remove from Recent*, and a *Show details* toggle.
+- **Single-screen diagnostic** — the splash screen shows a *Single-screen mode*
+  chip with a *why?* explanation when a two-page spread isn't possible.
+- **Version line** on the help screen.
+- Renamed the page-picker button to **Jump Page**.
+
+### Fixes
+- **Application icon** now shows correctly in the Windows *small icons* view
+  (dedicated bold artwork for small sizes).
+
 ## [1.1.2] — 2026-06-29
 
 ### Overlay Refinements

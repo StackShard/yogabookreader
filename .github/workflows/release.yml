@@ -37,21 +37,26 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: Yoga Book Reader ${{ github.event.inputs.tag || github.ref_name }}
           body: |
-            ## Changes in v1.1.2
+            ## Changes in v1.1.3
 
-            ### Overlay Refinements
-            - **Progress bar removed** — cleaner overlay; book title and page numbers merged into one header line (`Title · 54-55 / 66`)
-            - **Dial-pad page picker** — new `# Pg` button in the settings strip opens a 3x4 numpad dial pad for keyboard-free page entry; backdrop tap dismisses; overlay auto-hide pauses while dial pad is open
-            - **Settings strip centered** — buttons are now centre-aligned for a more balanced look
+            ### Spread Alignment
+            - **Spread nudge** — fix a skipped or mis-scanned page that throws off every two-page pair from that point on. **⇥ Nudge** forces the current page to start a spread alone, re-aligning everything after it without moving your place; **Reset align** clears it. Saved per document, and supports several nudges for books with multiple bad pages.
 
-            ### Library Improvements
-            - **Recent files capped at 8** (was 24) to reduce clutter
-            - **Thin separator** between Recent and Library sections
-            - **Individual recent-file removal** — long-press a recent tile to see a context menu with the book title, Remove, and Cancel
-            - **Clear Recent with confirmation** — Clear button now requires a second tap ("Really clear?") that auto-reverts after 4 s to prevent accidental clears
+            ### Reading Progress
+            - Recent and Library tiles show **page-of-total** progress (e.g. `42 / 180`), falling back to `Page 42`, then the document type.
 
-            ### Internals
-            - New `r2m:remove-recent-file` IPC channel for single-entry recent-file removal
+            ### Library Tools
+            - **Open containing folder** — long-press or right-click any tile to reveal the file in Explorer.
+            - **Clean missing** — drop recent entries whose files were moved or deleted.
+            - **Regenerate covers** — clear the thumbnail cache and rebuild covers.
+
+            ### Reader & Help
+            - **Better error recovery** — file-open errors offer *Choose another file*, *Remove from Recent*, and a *Show details* toggle.
+            - **Single-screen diagnostic** — the splash screen explains when a two-page spread isn't possible.
+            - **Version line** on the help screen, and the page-picker button is now **Jump Page**.
+
+            ### Fixes
+            - **Application icon** now shows correctly in the Windows *small icons* view.
           draft: false
           prerelease: false
           files: dist/*.exe
