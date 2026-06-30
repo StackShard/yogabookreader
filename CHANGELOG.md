@@ -2,6 +2,16 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
+## [1.1.5-beta] — 2026-06-30
+
+> Beta / pre-release.
+
+### Fixes
+- **Print scaling** — a printed page now fills the sheet (aspect preserved,
+  small margin) instead of printing as a small graphic in the middle, and wide
+  pages print in landscape. (Print preview is still unavailable — an Electron
+  limitation of the system print path.)
+
 ## [1.1.4-beta] — 2026-06-30
 
 > Beta / pre-release.

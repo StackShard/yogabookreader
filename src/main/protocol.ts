@@ -36,6 +36,9 @@ const MIME: Record<string, string> = {
   '.webp': 'image/webp',
   '.gif': 'image/gif',
   '.bmp': 'image/bmp',
+  // The print path serves a tiny full-page HTML wrapper through this scheme.
+  '.html': 'text/html',
+  '.htm': 'text/html',
 };
 
 /** Build a `yreader://` URL the renderer can fetch for an absolute file path. */
