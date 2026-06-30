@@ -86,8 +86,15 @@ Get-FileHash .\YogaBookReader-*-portable.exe -Algorithm SHA256
    - **Long-press right edge** → last page
 5. **Use the controls** — The overlay bar has quit, help, settings, library,
    brightness and auto-brightness controls. Tap **⚙ Settings** to open the
-   settings strip (zoom presets, reading direction); it auto-collapses after
-   making a selection.
+   settings strip (zoom presets, reading direction, **Jump Page**, and spread
+   **Nudge** / **Reset align**); it auto-collapses after making a selection.
+6. **Fix a misaligned scan** — If a skipped or mis-scanned page throws off the
+   two-page pairing, tap **⇥ Nudge** to push the current page onto its own
+   spread and re-align everything after it (your place is kept). **Reset align**
+   clears it. The fix is remembered per document.
+7. **Pick up where you left off** — Recent and Library tiles show reading
+   progress (e.g. `42 / 180`). Long-press or right-click a tile to **open its
+   containing folder**; **Clean missing** removes recents whose files are gone.
 
 **Keyboard shortcuts** (when connected):
 - **Left/Right arrow keys** — previous/next page
@@ -174,19 +181,27 @@ Built with **Electron + TypeScript**.
 - **Dual-screen spreads** — two portrait displays treated as a single open-book
   reading surface, with proper centerfold handling, LTR/RTL support, and
   single-display fallback.
+- **Spread alignment nudge** — fix a skipped/mis-scanned page that throws off
+  pairing: force the current page onto its own spread to re-align everything
+  after it, non-destructively and saved per document.
+- **Reading progress** — Recent/Library tiles show page-of-total progress,
+  persisted per file.
 - **Touch navigation** — tap left/right edges for prev/next, tap center for
   controls, swipe gestures, and keyboard shortcuts.
 - **Splash / library screen** — recent files and a folder-based library with
-  collapsible sections (all collapsed by default), cached cover thumbnails, and
-  folder picker.
+  collapsible sections, cached cover thumbnails, folder picker, per-tile
+  open-containing-folder, "Clean missing", "Regenerate covers", and a
+  single-screen diagnostic.
 - **Reader overlay** — minimal control bar (prev/next, library, help, settings)
-  with an expandable drawer for zoom presets, direction toggle, brightness control,
-  and app settings. Auto-hides after inactivity.
+  with an expandable drawer for zoom presets, direction toggle, page jump, spread
+  nudge, and brightness control. Auto-hides after inactivity.
+- **Error recovery** — file-open failures offer Choose another file, Remove from
+  Recent, and a Show-details toggle.
 - **Format support** — PDF, CBZ, and CBR (including RAR5).
 - **Hardware brightness** — uses Windows WMI brightness control when available;
   falls back to an in-app software dim overlay on devices without it.
 - **Cover generation** — automatic PDF and comic cover thumbnails, cached to disk
-  for instant loading.
+  for instant loading, with on-demand regeneration.
 
 ## Architecture
 
@@ -213,7 +228,8 @@ The hardware-independent decision logic lives in a pure, fully unit-tested core
 - **`placement.ts`** — detects portrait displays and assigns them to left/right
   based on their x-position. Purely orientation-based — no hardcoded resolutions,
   EDID strings, or device IDs.
-- **`state.ts`** — JSON state round-trip and the recent-files list.
+- **`state.ts`** — JSON state round-trip, the recent-files list, and persisted
+  per-file reading progress and spread-alignment nudges.
 
 ## Scripts
 
@@ -286,7 +302,7 @@ You only need to re-run `npm run package` after pulling new changes.
 
 ## Status
 
-The pure-logic core is complete and unit-tested (57 tests). The Electron
+The pure-logic core is complete and unit-tested (70 tests). The Electron
 rendering/window layer is implemented and type-checks/builds, but is best verified
 on actual dual-screen hardware (two portrait Windows displays), which the CI
 environment cannot provide.
