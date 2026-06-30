@@ -53,6 +53,7 @@ export interface RecentFileView {
   filePath: string;
   displayName: string;
   lastPage: number;
+  totalPages?: number;
   lastReadAt: number;
   coverThumbnailPath?: string;
 }
@@ -89,6 +90,10 @@ export const RendererToMain = {
   clearRecentFiles: 'r2m:clear-recent-files',
   removeRecentFile: 'r2m:remove-recent-file',
   getSettings: 'r2m:get-settings',
+  updateSettings: 'r2m:update-settings',
+  getLayoutInfo: 'r2m:get-layout-info',
+  pruneMissingRecentFiles: 'r2m:prune-missing-recent-files',
+  clearCoverCache: 'r2m:clear-cover-cache',
   requestOverlay: 'r2m:request-overlay',
   toggleFullScreen: 'r2m:toggle-full-screen',
   setAdaptiveBrightnessDisabled: 'r2m:set-adaptive-brightness-disabled',
@@ -154,6 +159,10 @@ export interface ReaderBridge {
   clearRecentFiles(): void;
   removeRecentFile(filePath: string): void;
   getSettings(): Promise<AppSettings>;
+  updateSettings(patch: Partial<AppSettings>): Promise<AppSettings>;
+  getLayoutInfo(): Promise<LayoutInfo>;
+  pruneMissingRecentFiles(): Promise<string[]>;
+  clearCoverCache(): Promise<void>;
   getLibrary(): Promise<LibraryGroup[]>;
   getLibraryCached(): Promise<LibraryGroup[]>;
   pickFolder(): Promise<LibraryGroup[]>;
@@ -168,6 +177,8 @@ export interface LibraryItemView {
   filePath: string;
   displayName: string;
   type: DocumentType;
+  lastPage?: number;
+  totalPages?: number;
 }
 
 /** A sub-folder's worth of library items (one section in the gallery). */
@@ -187,6 +198,24 @@ export interface CoverSource {
 export interface ResumeInfo {
   filePath: string;
   displayName: string;
+  lastPage: number;
+  totalPages?: number;
+  coverThumbnailPath?: string;
+}
+
+/** Display diagnostic summary for the splash screen. */
+export interface LayoutInfo {
+  mode: 'dual' | 'single' | 'ambiguous';
+  displayCount: number;
+  portraitCount: number;
+  displays: Array<{
+    id: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    portrait: boolean;
+  }>;
 }
 
 declare global {

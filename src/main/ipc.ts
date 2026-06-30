@@ -8,11 +8,12 @@
 
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, screen, shell } from 'electron';
 import {
   type DisplayMode,
   type ReadingDirection,
   type ZoomPreset,
+  EDGE_DEAD_ZONE_MAX,
 } from '../core/types.js';
 import {
   MainToRenderer,
@@ -20,6 +21,7 @@ import {
   type CoverSource,
   type LibraryGroup,
   type LibraryItemView,
+  type LayoutInfo,
   type ReaderError,
   type RecentFileView,
   type ResumeInfo,
@@ -38,6 +40,7 @@ import { log, logError } from './log.js';
 import {
   clearRecentFiles,
   getFileState,
+  getFileStates,
   getLibraryCache,
   getRecentFiles,
   getSettings,
@@ -48,6 +51,30 @@ import {
   updateSettings,
 } from './state-store.js';
 import { BrightnessController } from './brightness-controller.js';
+
+const ALLOWED_EXTERNAL_HOSTS = new Set(['ko-fi.com', 'www.ko-fi.com']);
+
+function isAllowedExternalUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && ALLOWED_EXTERNAL_HOSTS.has(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function updateRendererSettings(patch: unknown): ReturnType<typeof getSettings> {
+  if (!patch || typeof patch !== 'object') return getSettings();
+  const next: { tapZoneWidth?: number; edgeDeadZone?: number } = {};
+  const raw = patch as Record<string, unknown>;
+  if (typeof raw.tapZoneWidth === 'number' && raw.tapZoneWidth > 0 && raw.tapZoneWidth <= 0.5) {
+    next.tapZoneWidth = raw.tapZoneWidth;
+  }
+  if (typeof raw.edgeDeadZone === 'number' && raw.edgeDeadZone >= 0 && raw.edgeDeadZone <= EDGE_DEAD_ZONE_MAX) {
+    next.edgeDeadZone = raw.edgeDeadZone;
+  }
+  return Object.keys(next).length > 0 ? updateSettings(next) : getSettings();
+}
 
 export class ReaderController {
   private session: ReaderSession | null = null;
@@ -110,6 +137,7 @@ export class ReaderController {
         filePath: f.filePath,
         displayName: f.displayName,
         lastPage: f.lastPage,
+        totalPages: f.totalPages,
         lastReadAt: f.lastReadAt,
         coverThumbnailPath: f.coverThumbnailPath,
       })),
@@ -121,6 +149,10 @@ export class ReaderController {
       removeRecentFile(filePath);
     });
     ipcMain.handle(RendererToMain.getSettings, () => getSettings());
+    ipcMain.handle(RendererToMain.updateSettings, (_e, patch) => updateRendererSettings(patch));
+    ipcMain.handle(RendererToMain.getLayoutInfo, () => this.getLayoutInfo());
+    ipcMain.handle(RendererToMain.pruneMissingRecentFiles, () => this.pruneMissingRecentFiles());
+    ipcMain.handle(RendererToMain.clearCoverCache, () => this.clearCoverCache());
     ipcMain.handle(RendererToMain.getLibrary, () => this.getLibrary());
     ipcMain.handle(RendererToMain.getLibraryCached, () => this.getLibraryCached());
     ipcMain.handle(RendererToMain.pickFolder, () => this.pickFolder());
@@ -146,7 +178,8 @@ export class ReaderController {
       this.broadcast(MainToRenderer.hideHelp);
     });
     ipcMain.on(RendererToMain.openExternal, (_e, url: string) => {
-      void shell.openExternal(url);
+      if (isAllowedExternalUrl(url)) void shell.openExternal(url);
+      else log('blocked external URL:', url);
     });
   }
 
@@ -161,7 +194,32 @@ export class ReaderController {
   private getResumeInfo(): ResumeInfo | null {
     if (!this.session) return null;
     const info = this.session.describe();
-    return { filePath: info.filePath, displayName: info.displayName };
+    const recent = getRecentFiles().find((f) => f.filePath === info.filePath);
+    return {
+      filePath: info.filePath,
+      displayName: info.displayName,
+      lastPage: this.session.anchorPage,
+      totalPages: info.totalPages,
+      coverThumbnailPath: recent?.coverThumbnailPath,
+    };
+  }
+
+  private getLayoutInfo(): LayoutInfo {
+    const displays = screen.getAllDisplays();
+    const placement = currentPlacement();
+    return {
+      mode: placement.mode,
+      displayCount: displays.length,
+      portraitCount: displays.filter((d) => d.bounds.height > d.bounds.width).length,
+      displays: displays.map((d) => ({
+        id: d.id,
+        x: d.bounds.x,
+        y: d.bounds.y,
+        width: d.bounds.width,
+        height: d.bounds.height,
+        portrait: d.bounds.height > d.bounds.width,
+      })),
+    };
   }
 
   /** Return from the library to the current document without reloading it. */
@@ -209,10 +267,18 @@ export class ReaderController {
     const root = getSettings().rootFolder;
     if (!root) return [];
     const entries = await scanFolder(root);
+    const fileStates = getFileStates();
     const groups = new Map<string, LibraryItemView[]>();
     for (const e of entries) {
       const folder = e.relativeDir === '' ? 'Library' : e.relativeDir;
-      const item: LibraryItemView = { filePath: e.filePath, displayName: e.displayName, type: e.type };
+      const fileState = fileStates[e.filePath];
+      const item: LibraryItemView = {
+        filePath: e.filePath,
+        displayName: e.displayName,
+        type: e.type,
+        lastPage: fileState?.lastPage,
+        totalPages: fileState?.totalPages,
+      };
       const list = groups.get(folder);
       if (list) list.push(item);
       else groups.set(folder, [item]);
@@ -281,6 +347,23 @@ export class ReaderController {
     }
   }
 
+  private async clearCoverCache(): Promise<void> {
+    await fs.rm(thumbnailCacheDir(), { recursive: true, force: true });
+  }
+
+  private async pruneMissingRecentFiles(): Promise<string[]> {
+    const missing: string[] = [];
+    for (const f of getRecentFiles()) {
+      try {
+        await fs.access(f.filePath);
+      } catch {
+        missing.push(f.filePath);
+        removeRecentFile(f.filePath);
+      }
+    }
+    return missing;
+  }
+
   private async pickFile(): Promise<void> {
     const result = await dialog.showOpenDialog({
       properties: ['openFile'],
@@ -345,6 +428,7 @@ export class ReaderController {
         filePath,
         displayName: result.displayName,
         lastPage: this.session.anchorPage,
+        totalPages: this.session.describe().totalPages,
         lastReadAt: Date.now(),
       });
 
@@ -486,9 +570,17 @@ export class ReaderController {
       saveFileState({
         filePath: info.filePath,
         lastPage: this.session.anchorPage,
+        totalPages: info.totalPages,
         readingDirection: info.readingDirection,
         zoomPreset: info.zoomPreset,
         isSpreadEncoded: info.isSpreadEncoded,
+      });
+      recordRecentFile({
+        filePath: info.filePath,
+        displayName: info.displayName,
+        lastPage: this.session.anchorPage,
+        totalPages: info.totalPages,
+        lastReadAt: Date.now(),
       });
     }
     this.broadcastRender();

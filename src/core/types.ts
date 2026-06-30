@@ -58,6 +58,8 @@ export interface PerFileState {
   filePath: string;
   /** 0-based index of the page currently anchoring the view. */
   lastPage: number;
+  /** Last known page count, used for progress displays. */
+  totalPages?: number;
   readingDirection: ReadingDirection;
   zoomPreset: ZoomPreset;
   /**
@@ -82,6 +84,8 @@ export interface RecentFile {
   filePath: string;
   displayName: string;
   lastPage: number;
+  /** Last known page count, used for progress displays. */
+  totalPages?: number;
   /** Epoch millis of last read. */
   lastReadAt: number;
   /** Path to the cached cover thumbnail, if generated. */

@@ -47,10 +47,15 @@ async function main(): Promise<void> {
   document.body.appendChild(dimLayer);
 
   const settings = await reader.getSettings().catch(() => DEFAULT_SETTINGS);
+  const touchOptions = {
+    tapZoneWidth: settings.tapZoneWidth,
+    edgeDeadZone: settings.edgeDeadZone,
+  };
 
   // The help diagram exists on every window (shown on both screens on request);
   // the control overlay lives only on the right (or single) window.
   const help = new HelpOverlay(() => reader.dismissHelp());
+  help.setZones(touchOptions.tapZoneWidth, touchOptions.edgeDeadZone);
   const overlay =
     role === 'left'
       ? null
@@ -65,10 +70,22 @@ async function main(): Promise<void> {
             onToggleFullScreen: () => reader.toggleFullScreen(),
             onQuit: () => reader.quit(),
             onSetBrightness: (level) => reader.setBrightness(level),
+            onSetTapZone: (width) => {
+              touchOptions.tapZoneWidth = width;
+              help.setZones(touchOptions.tapZoneWidth, touchOptions.edgeDeadZone);
+              void reader.updateSettings({ tapZoneWidth: width });
+            },
+            onSetEdgeDeadZone: (width) => {
+              touchOptions.edgeDeadZone = width;
+              help.setZones(touchOptions.tapZoneWidth, touchOptions.edgeDeadZone);
+              void reader.updateSettings({ edgeDeadZone: width });
+            },
             onToggleAdaptive: (disabled) => reader.setAdaptiveBrightnessDisabled(disabled),
             onShowHelp: () => reader.requestHelp(), // show on BOTH screens via main
           },
           settings.brightness,
+          settings.tapZoneWidth,
+          settings.edgeDeadZone,
           settings.disableAdaptiveBrightness,
         );
 
@@ -82,7 +99,7 @@ async function main(): Promise<void> {
       onLongPrev: () => reader.jumpToPage(0),
       onLongNext: () => reader.jumpToPage(totalPages > 0 ? totalPages - 1 : 0),
     },
-    { tapZoneWidth: settings.tapZoneWidth, edgeDeadZone: settings.edgeDeadZone },
+    touchOptions,
   );
 
   let helpAutoShown = settings.helpShown;
@@ -146,7 +163,14 @@ async function main(): Promise<void> {
 
   reader.onShowError((error) => {
     loadingEl?.classList.add('hidden');
-    showError(stage, error);
+    showError(stage, error, {
+      onPickFile: () => reader.pickFile(),
+      onOpenLibrary: () => reader.openLibrary(),
+      onRemoveRecent: (filePath) => {
+        reader.removeRecentFile(filePath);
+        reader.openLibrary();
+      },
+    });
   });
   reader.onShowOverlay(() => overlay?.show());
   reader.onShowHelp(() => help.show());

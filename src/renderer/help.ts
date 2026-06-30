@@ -1,12 +1,15 @@
 /**
  * Tap-zone help overlay. A full-screen labelled diagram showing what each region
- * of the screen does (previous / menu / next, with held edges). Tapping anywhere
- * dismisses it. Shown via the overlay's "?" button and once automatically on the
- * first document open.
+ * of the screen does. Tapping anywhere dismisses it. Shown via the overlay help
+ * button and once automatically on the first document open.
  */
 
 export class HelpOverlay {
   private readonly root: HTMLElement;
+  private readonly edgeZones: HTMLElement[] = [];
+  private prevZone: HTMLElement | null = null;
+  private centerZone: HTMLElement | null = null;
+  private nextZone: HTMLElement | null = null;
 
   /** `onDismiss` is called on tap; the actual hide is driven externally so a tap
    *  on either screen can close the help on both. */
@@ -34,13 +37,16 @@ export class HelpOverlay {
   private buildZones(): HTMLElement {
     const row = document.createElement('div');
     row.className = 'help-zones';
-    row.append(
-      this.zone('help-edge', '⟂', 'Hold'),
-      this.zone('help-prev', '‹', 'Previous'),
-      this.zone('help-center', '☰', 'Tap for menu'),
-      this.zone('help-next', '›', 'Next'),
-      this.zone('help-edge', '⟂', 'Hold'),
-    );
+    const leftEdge = this.zone('help-edge', 'Hold', 'Hold');
+    const prev = this.zone('help-prev', '<', 'Previous');
+    const center = this.zone('help-center', 'Menu', 'Tap for menu');
+    const next = this.zone('help-next', '>', 'Next');
+    const rightEdge = this.zone('help-edge', 'Hold', 'Hold');
+    this.edgeZones.push(leftEdge, rightEdge);
+    this.prevZone = prev;
+    this.centerZone = center;
+    this.nextZone = next;
+    row.append(leftEdge, prev, center, next, rightEdge);
     return row;
   }
 
@@ -50,8 +56,8 @@ export class HelpOverlay {
 
     const tips = document.createElement('div');
     tips.innerHTML =
-      '<p>Swipe left/right to turn pages · Arrow keys or PageUp/PageDown also work</p>' +
-      '<p>Tap the centre for controls · Esc toggles full-screen · Tap anywhere to close</p>';
+      '<p>Swipe left/right to turn pages - Arrow keys or PageUp/PageDown also work</p>' +
+      '<p>Tap the center for controls - Esc toggles full-screen - Tap anywhere to close</p>';
 
     const donate = document.createElement('div');
     donate.className = 'help-donate';
@@ -65,7 +71,7 @@ export class HelpOverlay {
     coffeeLink.textContent = 'buying me a coffee';
     coffeeLink.addEventListener('click', (e) => {
       e.preventDefault();
-      e.stopPropagation(); // don't dismiss help on this tap
+      e.stopPropagation();
       window.reader.openExternal('https://ko-fi.com/X3X4228M3H');
     });
 
@@ -82,5 +88,15 @@ export class HelpOverlay {
 
   hide(): void {
     this.root.classList.add('hidden');
+  }
+
+  setZones(tapZoneWidth: number, edgeDeadZone: number): void {
+    const edge = Math.max(0, edgeDeadZone) * 100;
+    const side = Math.max(0, tapZoneWidth - edgeDeadZone) * 100;
+    const center = Math.max(0, 1 - tapZoneWidth * 2) * 100;
+    for (const zone of this.edgeZones) zone.style.flex = `0 0 ${edge}%`;
+    if (this.prevZone) this.prevZone.style.flex = `0 0 ${side}%`;
+    if (this.nextZone) this.nextZone.style.flex = `0 0 ${side}%`;
+    if (this.centerZone) this.centerZone.style.flex = `0 0 ${center}%`;
   }
 }

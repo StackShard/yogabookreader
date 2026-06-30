@@ -68,6 +68,12 @@ export function getFileState(filePath: string): PerFileState | undefined {
   return load().files[filePath];
 }
 
+/** All per-file states, keyed by path. Use when looking up many files at once
+ *  to avoid re-deserializing the whole state per lookup. */
+export function getFileStates(): Record<string, PerFileState> {
+  return load().files;
+}
+
 /** Merge a per-file state patch and persist it. */
 export function saveFileState(patch: PerFileState): void {
   const state = load();

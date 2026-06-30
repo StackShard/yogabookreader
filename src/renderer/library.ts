@@ -12,6 +12,31 @@ export interface GalleryItem {
   filePath: string;
   displayName: string;
   subtitle?: string;
+  lastPage?: number;
+  totalPages?: number;
+}
+
+export interface LibraryRenderOptions {
+  expandedFolders?: Set<string>;
+  onSectionToggle?: (folder: string, expanded: boolean) => void;
+  /** Force every section open regardless of saved state (e.g. while searching),
+   *  without persisting the change. */
+  forceExpanded?: boolean;
+}
+
+function pageSubtitle(item: GalleryItem): string | undefined {
+  if (item.totalPages && item.totalPages > 0) {
+    return `Page ${(item.lastPage ?? 0) + 1} / ${item.totalPages}`;
+  }
+  if (item.lastPage !== undefined && item.lastPage > 0) {
+    return `Page ${item.lastPage + 1}`;
+  }
+  return item.subtitle;
+}
+
+function progressPercent(item: GalleryItem): number | null {
+  if (!item.totalPages || item.totalPages <= 0) return null;
+  return Math.max(0, Math.min(100, Math.round((((item.lastPage ?? 0) + 1) / item.totalPages) * 100)));
 }
 
 function showTileContextMenu(
@@ -121,11 +146,22 @@ function tile(
   name.textContent = item.displayName;
 
   el.append(cover, name);
-  if (item.subtitle) {
+  const subtitle = pageSubtitle(item);
+  if (subtitle) {
     const sub = document.createElement('span');
     sub.className = 'tile-sub';
-    sub.textContent = item.subtitle;
+    sub.textContent = subtitle;
     el.appendChild(sub);
+  }
+  const progress = progressPercent(item);
+  if (progress !== null) {
+    const bar = document.createElement('div');
+    bar.className = 'tile-progress';
+    const fill = document.createElement('div');
+    fill.className = 'tile-progress-fill';
+    fill.style.width = `${progress}%`;
+    bar.appendChild(fill);
+    el.appendChild(bar);
   }
   return el;
 }
@@ -153,6 +189,7 @@ export function renderLibrary(
   container: HTMLElement,
   groups: LibraryGroup[],
   onOpen: (filePath: string) => void,
+  options: LibraryRenderOptions = {},
 ): void {
   container.innerHTML = '';
   if (groups.length === 0) {
@@ -173,11 +210,13 @@ export function renderLibrary(
     count.textContent = String(group.items.length);
     const chevron = document.createElement('span');
     chevron.className = 'lib-section-chevron';
-    chevron.textContent = '▸';
+    const expanded =
+      options.forceExpanded || (options.expandedFolders?.has(group.folder) ?? false);
+    chevron.textContent = expanded ? 'v' : '>';
     header.append(group.folder, count, chevron);
 
     const body = document.createElement('div');
-    body.className = 'lib-section-body collapsed';
+    body.className = expanded ? 'lib-section-body' : 'lib-section-body collapsed';
     const grid = document.createElement('div');
     grid.className = 'gallery';
     for (const item of group.items) grid.appendChild(tile(libraryToGalleryItem(item), onOpen));
@@ -185,10 +224,11 @@ export function renderLibrary(
 
     header.addEventListener('click', () => {
       const collapsed = body.classList.toggle('collapsed');
-      chevron.textContent = collapsed ? '▸' : '▾';
+      chevron.textContent = collapsed ? '>' : 'v';
       header.classList.toggle('collapsed', collapsed);
+      options.onSectionToggle?.(group.folder, !collapsed);
     });
-    header.classList.add('collapsed');
+    header.classList.toggle('collapsed', !expanded);
 
     section.append(header, body);
     container.appendChild(section);
@@ -199,7 +239,8 @@ export function recentToGalleryItem(f: RecentFileView): GalleryItem {
   return {
     filePath: f.filePath,
     displayName: f.displayName,
-    subtitle: `Page ${f.lastPage + 1}`,
+    lastPage: f.lastPage,
+    totalPages: f.totalPages,
   };
 }
 
@@ -208,5 +249,55 @@ export function libraryToGalleryItem(f: LibraryItemView): GalleryItem {
     filePath: f.filePath,
     displayName: f.displayName,
     subtitle: f.type.toUpperCase(),
+    lastPage: f.lastPage,
+    totalPages: f.totalPages,
   };
+}
+
+export function renderContinueCard(
+  container: HTMLElement,
+  item: GalleryItem,
+  onOpen: (filePath: string) => void,
+): void {
+  container.innerHTML = '';
+  const card = document.createElement('button');
+  card.className = 'continue-card';
+  card.addEventListener('click', () => onOpen(item.filePath));
+
+  const cover = document.createElement('div');
+  cover.className = 'continue-cover tile-cover tile-cover-placeholder';
+  cover.textContent = item.displayName.slice(0, 1).toUpperCase();
+  void getCover(item.filePath).then((url) => {
+    if (!url) return;
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = item.displayName;
+    img.addEventListener('load', () => {
+      cover.classList.remove('tile-cover-placeholder');
+      cover.textContent = '';
+      cover.appendChild(img);
+    });
+  });
+
+  const meta = document.createElement('div');
+  meta.className = 'continue-meta';
+  const title = document.createElement('strong');
+  title.textContent = item.displayName;
+  const sub = document.createElement('span');
+  sub.textContent = pageSubtitle(item) ?? 'Resume reading';
+  meta.append(title, sub);
+
+  const progress = progressPercent(item);
+  if (progress !== null) {
+    const bar = document.createElement('div');
+    bar.className = 'tile-progress continue-progress';
+    const fill = document.createElement('div');
+    fill.className = 'tile-progress-fill';
+    fill.style.width = `${progress}%`;
+    bar.appendChild(fill);
+    meta.appendChild(bar);
+  }
+
+  card.append(cover, meta);
+  container.appendChild(card);
 }

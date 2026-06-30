@@ -94,6 +94,15 @@ describe('deserialize', () => {
     expect(state.files['/m.cbz'].isSpreadEncoded).toBe(true);
   });
 
+  it('preserves known page counts for progress displays', () => {
+    const state = deserialize({
+      recentFiles: [{ filePath: '/a.pdf', displayName: 'A', lastPage: 4, totalPages: 20 }],
+      files: { '/a.pdf': { filePath: '/a.pdf', lastPage: 4, totalPages: 20 } },
+    });
+    expect(state.recentFiles[0].totalPages).toBe(20);
+    expect(state.files['/a.pdf'].totalPages).toBe(20);
+  });
+
   it('clamps negative lastPage to 0', () => {
     const state = deserialize({ files: { '/a.pdf': { filePath: '/a.pdf', lastPage: -5 } } });
     expect(state.files['/a.pdf'].lastPage).toBe(0);

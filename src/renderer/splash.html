@@ -22,15 +22,42 @@
         <h1>Yoga Book Reader</h1>
       </header>
       <main class="splash-scroll">
+        <section id="continue-section" hidden>
+          <h2>Continue</h2>
+          <div id="continue-card"></div>
+        </section>
         <section>
-          <h2>Recent <button id="clear-recent" class="ghost-btn" style="font-size:14px;min-height:auto;padding:6px 14px;margin-left:12px;vertical-align:middle">Clear</button></h2>
+          <div class="section-title-row">
+            <h2>Recent</h2>
+            <button id="clean-missing" class="ghost-btn compact-btn">Clean missing</button>
+            <button id="clear-recent" class="ghost-btn compact-btn">Clear</button>
+          </div>
           <div id="recent" class="gallery"></div>
         </section>
         <div class="section-divider"></div>
         <section>
-          <h2>Library</h2>
+          <div class="section-title-row">
+            <h2>Library</h2>
+            <button id="collapse-library" class="ghost-btn compact-btn">Collapse all</button>
+            <button id="clear-covers" class="ghost-btn compact-btn">Clear covers</button>
+          </div>
           <p id="library-folder" class="library-folder"></p>
+          <div class="library-tools">
+            <input id="library-search" class="library-search" type="search" placeholder="Search library" />
+            <select id="library-sort" class="library-sort" aria-label="Sort library">
+              <option value="title">Title</option>
+              <option value="type">Type</option>
+              <option value="progress">Progress</option>
+            </select>
+          </div>
           <div id="library"></div>
+        </section>
+        <section>
+          <div class="section-title-row">
+            <h2>Display</h2>
+            <button id="layout-refresh" class="ghost-btn compact-btn">Refresh</button>
+          </div>
+          <div id="layout-info" class="layout-info"></div>
         </section>
       </main>
       <!-- Thumb-reachable action bar (mirrors the reading control bar position). -->

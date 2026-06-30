@@ -10,6 +10,7 @@ import {
   BRIGHTNESS_MAX,
   BRIGHTNESS_MIN,
   BRIGHTNESS_STEP,
+  EDGE_DEAD_ZONE_MAX,
   type ZoomPreset,
 } from '../core/types.js';
 
@@ -30,6 +31,8 @@ export interface OverlayCallbacks {
   onToggleFullScreen(): void;
   onQuit(): void;
   onSetBrightness(level: number): void;
+  onSetTapZone(width: number): void;
+  onSetEdgeDeadZone(width: number): void;
   onToggleAdaptive(disabled: boolean): void;
   onShowHelp(): void;
 }
@@ -57,6 +60,8 @@ export class ControlOverlay {
   constructor(
     private readonly cb: OverlayCallbacks,
     private readonly initialBrightness: number,
+    private readonly initialTapZoneWidth: number,
+    private readonly initialEdgeDeadZone: number,
     initialAdaptiveDisabled: boolean,
   ) {
     this.adaptiveDisabled = initialAdaptiveDisabled;
@@ -77,7 +82,7 @@ export class ControlOverlay {
   }
 
   private build(): void {
-    // Settings strip: zoom presets + direction + page picker. Auto-collapses after zoom/direction.
+    // Settings strip: zoom presets, direction, page picker, and tap-zone tuning.
     const settingsRow = document.createElement('div');
     settingsRow.className = 'overlay-settings-row';
     const zoomFitWidth = this.zoomButton('Fit Width', 'fit-width');
@@ -87,22 +92,29 @@ export class ControlOverlay {
       zoomFitWidth,
       zoomFitHeight,
       zoomFullBleed,
-      this.button('↔ LTR/RTL', this.settingsAction(() => this.cb.onToggleDirection())),
-      this.button('# Pg', () => this.showDialPad(), 'overlay-btn-page'),
+      this.button('LTR/RTL', this.settingsAction(() => this.cb.onToggleDirection()), '', 'Reading direction'),
+      this.button('#', () => this.showDialPad(), 'overlay-btn-page', 'Jump to page'),
+      this.calibrationControl('Tap', this.initialTapZoneWidth, 0.25, 0.5, 0.01, (value) =>
+        this.cb.onSetTapZone(value),
+      ),
+      this.calibrationControl('Grip', this.initialEdgeDeadZone, 0, EDGE_DEAD_ZONE_MAX, 0.01, (value) =>
+        this.cb.onSetEdgeDeadZone(value),
+      ),
     );
 
     const settingsWrap = document.createElement('div');
     settingsWrap.className = 'overlay-expanded';
     settingsWrap.appendChild(settingsRow);
 
-    // Primary bar: Quit | Help | Settings | Library | brightness | Auto
+    // Primary bar: Quit | Help | Settings | Fullscreen | Library | brightness | Auto
     const minimal = document.createElement('div');
     minimal.className = 'overlay-bar';
     minimal.append(
       this.buildQuitButton(),
-      this.button('? Help', () => this.cb.onShowHelp()),
+      this.button('?', () => this.cb.onShowHelp(), '', 'Show tap zones'),
       this.settingsButton,
-      this.button('▦ Library', () => this.cb.onOpenLibrary()),
+      this.button('[]', () => this.cb.onToggleFullScreen(), '', 'Toggle fullscreen'),
+      this.button('Lib', () => this.cb.onOpenLibrary(), '', 'Open library'),
       this.brightnessControl(),
       this.adaptiveButton,
     );
@@ -126,7 +138,9 @@ export class ControlOverlay {
   /** Settings button toggles the expanded strip; stays labelled "⚙ Settings" either way. */
   private makeSettingsButton(): HTMLButtonElement {
     const b = document.createElement('button');
-    b.textContent = '⚙ Settings';
+    b.textContent = '...';
+    b.title = 'Settings';
+    b.setAttribute('aria-label', 'Settings');
     b.className = 'overlay-btn overlay-btn-settings';
     b.addEventListener('click', () => {
       this.setExpanded(!this.expanded);
@@ -137,7 +151,9 @@ export class ControlOverlay {
 
   private buildQuitButton(): HTMLButtonElement {
     const b = document.createElement('button');
-    b.textContent = 'Quit';
+    b.textContent = 'X';
+    b.title = 'Quit';
+    b.setAttribute('aria-label', 'Quit');
     b.className = 'overlay-btn overlay-btn-quit';
     b.addEventListener('click', () => {
       this.showQuitConfirm();
@@ -176,7 +192,7 @@ export class ControlOverlay {
   }
 
   private adaptiveLabel(): string {
-    return this.adaptiveDisabled ? '☀ Auto: Off' : '☀ Auto: On';
+    return this.adaptiveDisabled ? 'Auto off' : 'Auto on';
   }
 
   private toggleAdaptive(): void {
@@ -189,7 +205,7 @@ export class ControlOverlay {
     const wrap = document.createElement('label');
     wrap.className = 'overlay-brightness';
     const label = document.createElement('span');
-    label.textContent = '☀';
+    label.textContent = 'Sun';
     const slider = document.createElement('input');
     slider.type = 'range';
     slider.min = String(BRIGHTNESS_MIN);
@@ -204,9 +220,44 @@ export class ControlOverlay {
     return wrap;
   }
 
-  private button(label: string, onClick: () => void, extraClass = ''): HTMLButtonElement {
+  private calibrationControl(
+    labelText: string,
+    initialValue: number,
+    min: number,
+    max: number,
+    step: number,
+    onInput: (value: number) => void,
+  ): HTMLElement {
+    const wrap = document.createElement('label');
+    wrap.className = 'overlay-calibration';
+    const label = document.createElement('span');
+    label.textContent = labelText;
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = String(min);
+    slider.max = String(max);
+    slider.step = String(step);
+    slider.value = String(initialValue);
+    slider.addEventListener('input', () => {
+      onInput(Number(slider.value));
+      this.poke();
+    });
+    wrap.append(label, slider);
+    return wrap;
+  }
+
+  private button(
+    label: string,
+    onClick: () => void,
+    extraClass = '',
+    title?: string,
+  ): HTMLButtonElement {
     const b = document.createElement('button');
     b.textContent = label;
+    if (title) {
+      b.title = title;
+      b.setAttribute('aria-label', title);
+    }
     b.className = `overlay-btn${extraClass ? ' ' + extraClass : ''}`;
     b.addEventListener('click', () => {
       onClick();

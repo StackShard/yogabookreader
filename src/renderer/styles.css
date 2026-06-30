@@ -200,6 +200,10 @@ body {
   min-width: 110px;
 }
 
+.overlay-btn[aria-label] {
+  min-width: 68px;
+}
+
 /* Settings button: active/expanded state */
 .overlay.expanded .overlay-btn-settings {
   background: var(--accent-press);
@@ -336,6 +340,25 @@ body {
   scroll-snap-align: start;
 }
 
+.overlay-calibration {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap);
+  padding: 0 12px;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 600;
+  flex-shrink: 0;
+  scroll-snap-align: start;
+}
+
+.overlay-calibration input[type='range'] {
+  width: 130px;
+  height: 40px;
+  accent-color: var(--accent);
+}
+
 .overlay-brightness input[type='range'] {
   width: 150px;
   height: 40px;
@@ -441,6 +464,14 @@ body {
   font-size: 14px;
 }
 
+.error-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 10px;
+}
+
 /* ---- Splash / library ---- */
 #primary-view {
   position: fixed;
@@ -468,6 +499,104 @@ body {
   margin: 20px 0 14px;
   font-size: 18px;
   color: var(--muted);
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.section-title-row h2 {
+  margin-right: auto;
+}
+
+.compact-btn {
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+.continue-card {
+  width: 100%;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 14px;
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.continue-cover {
+  width: 86px;
+  flex: 0 0 86px;
+  border-radius: 8px;
+}
+
+.continue-meta {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.continue-meta strong {
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.continue-meta span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.library-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.library-search,
+.library-sort {
+  min-height: 48px;
+  border: 1px solid #3a3a3e;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 15px;
+  padding: 0 14px;
+}
+
+.library-search::placeholder {
+  color: var(--muted);
+}
+
+.layout-info {
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 14px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.layout-display-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
 }
 
 /* Thumb-reachable bottom action bar (mirrors the reading control bar). */
@@ -635,6 +764,24 @@ body {
 .tile-sub {
   font-size: 13px;
   color: var(--muted);
+}
+
+.tile-progress {
+  height: 5px;
+  width: 100%;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.tile-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.continue-progress {
+  max-width: 360px;
 }
 
 /* Secondary screen in dual mode: just a hint. */

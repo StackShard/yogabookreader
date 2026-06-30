@@ -14,7 +14,21 @@ const REASON_TITLES: Record<ReaderError['reason'], string> = {
   unknown: 'Something went wrong',
 };
 
-export function showError(container: HTMLElement, error: ReaderError): void {
+export interface ErrorActions {
+  onPickFile(): void;
+  onOpenLibrary(): void;
+  onRemoveRecent(filePath: string): void;
+}
+
+function actionButton(label: string, action: () => void, className = 'ghost-btn'): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.className = className;
+  button.textContent = label;
+  button.addEventListener('click', action);
+  return button;
+}
+
+export function showError(container: HTMLElement, error: ReaderError, actions: ErrorActions): void {
   container.innerHTML = '';
   const panel = document.createElement('div');
   panel.className = 'error-panel';
@@ -29,6 +43,14 @@ export function showError(container: HTMLElement, error: ReaderError): void {
   file.className = 'error-file';
   file.textContent = error.filePath;
 
-  panel.append(title, detail, file);
+  const buttons = document.createElement('div');
+  buttons.className = 'error-actions';
+  buttons.append(
+    actionButton('Choose another file', actions.onPickFile, 'primary-btn'),
+    actionButton('Open library', actions.onOpenLibrary),
+    actionButton('Remove from Recent', () => actions.onRemoveRecent(error.filePath)),
+  );
+
+  panel.append(title, detail, file, buttons);
   container.appendChild(panel);
 }
