@@ -90,3 +90,9 @@ export function clearRecentFiles(): void {
   state.recentFiles = [];
   save(state);
 }
+
+export function removeRecentFile(filePath: string): void {
+  const state = load();
+  state.recentFiles = state.recentFiles.filter((f) => f.filePath !== filePath);
+  save(state);
+}

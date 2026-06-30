@@ -37,9 +37,6 @@ export interface OverlayCallbacks {
 export class ControlOverlay {
   private readonly root: HTMLElement;
   private readonly titleEl: HTMLElement;
-  private readonly progressLabel: HTMLElement;
-  private readonly progressTrack: HTMLElement;
-  private readonly progressFill: HTMLElement;
   private readonly adaptiveButton: HTMLButtonElement;
   private readonly settingsButton: HTMLButtonElement;
   private readonly confirmRow: HTMLElement;
@@ -49,8 +46,13 @@ export class ControlOverlay {
   private expanded = false;
   private hovered = false;
   private adaptiveDisabled: boolean;
-  private totalPages = 0;
   private currentZoom: ZoomPreset = 'fit-height';
+  private bookTitle = '';
+  private pageLabel = '';
+  private dialpadEl: HTMLElement | null = null;
+  private dialpadDisplay: HTMLElement | null = null;
+  private dialpadValue = '';
+  private dialpadOpen = false;
 
   constructor(
     private readonly cb: OverlayCallbacks,
@@ -64,15 +66,6 @@ export class ControlOverlay {
     this.titleEl = document.createElement('div');
     this.titleEl.className = 'overlay-title';
 
-    this.progressLabel = document.createElement('span');
-    this.progressLabel.className = 'overlay-progress-label';
-
-    this.progressTrack = document.createElement('div');
-    this.progressTrack.className = 'overlay-progress-track';
-    this.progressFill = document.createElement('div');
-    this.progressFill.className = 'overlay-progress-fill';
-    this.progressTrack.appendChild(this.progressFill);
-
     this.adaptiveButton = this.button(this.adaptiveLabel(), () => this.toggleAdaptive(), 'overlay-btn-adaptive');
     this.settingsButton = this.makeSettingsButton();
     this.confirmRow = this.buildConfirmRow();
@@ -84,42 +77,7 @@ export class ControlOverlay {
   }
 
   private build(): void {
-    // Progress row: label + goto input + Go button + bar
-    const gotoInput = document.createElement('input');
-    gotoInput.type = 'number';
-    gotoInput.min = '1';
-    gotoInput.placeholder = '#';
-    gotoInput.className = 'overlay-goto-input';
-    gotoInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const page = Number(gotoInput.value) - 1;
-        if (page >= 0) this.cb.onJump(page);
-        gotoInput.value = '';
-        this.poke();
-      }
-    });
-
-    const gotoBtn = this.button('Go', () => {
-      const page = Number(gotoInput.value) - 1;
-      if (page >= 0) this.cb.onJump(page);
-      gotoInput.value = '';
-    }, 'overlay-btn-go');
-
-    // Clicking the progress bar jumps to that position in the book
-    this.progressTrack.style.cursor = 'pointer';
-    this.progressTrack.addEventListener('click', (e) => {
-      if (this.totalPages <= 0) return;
-      const rect = this.progressTrack.getBoundingClientRect();
-      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      this.cb.onJump(Math.round(ratio * (this.totalPages - 1)));
-      this.poke();
-    });
-
-    const progress = document.createElement('div');
-    progress.className = 'overlay-progress';
-    progress.append(this.progressLabel, gotoInput, gotoBtn, this.progressTrack);
-
-    // Settings strip: zoom presets + direction. Auto-collapses after each action.
+    // Settings strip: zoom presets + direction + page picker. Auto-collapses after zoom/direction.
     const settingsRow = document.createElement('div');
     settingsRow.className = 'overlay-settings-row';
     const zoomFitWidth = this.zoomButton('Fit Width', 'fit-width');
@@ -130,6 +88,7 @@ export class ControlOverlay {
       zoomFitHeight,
       zoomFullBleed,
       this.button('↔ LTR/RTL', this.settingsAction(() => this.cb.onToggleDirection())),
+      this.button('# Pg', () => this.showDialPad(), 'overlay-btn-page'),
     );
 
     const settingsWrap = document.createElement('div');
@@ -148,8 +107,8 @@ export class ControlOverlay {
       this.adaptiveButton,
     );
 
-    // Order: title, progress, settings strip, confirm row, minimal bar
-    this.root.append(this.titleEl, progress, settingsWrap, this.confirmRow, minimal);
+    // Order: title, settings strip, confirm row, minimal bar
+    this.root.append(this.titleEl, settingsWrap, this.confirmRow, minimal);
   }
 
   /** Creates a zoom button and registers it in the zoomButtons map. */
@@ -256,6 +215,79 @@ export class ControlOverlay {
     return b;
   }
 
+  // ---- Dial-pad page picker ----
+
+  private buildDialPad(): void {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'dialpad-overlay hidden';
+
+    const pad = document.createElement('div');
+    pad.className = 'dialpad';
+
+    this.dialpadDisplay = document.createElement('div');
+    this.dialpadDisplay.className = 'dialpad-display';
+
+    const grid = document.createElement('div');
+    grid.className = 'dialpad-grid';
+
+    const appendDigit = (d: string) => {
+      this.dialpadValue += d;
+      if (this.dialpadDisplay) this.dialpadDisplay.textContent = this.dialpadValue;
+    };
+
+    const backspace = () => {
+      this.dialpadValue = this.dialpadValue.slice(0, -1);
+      if (this.dialpadDisplay) this.dialpadDisplay.textContent = this.dialpadValue;
+    };
+
+    const confirm = () => {
+      const page = Number(this.dialpadValue);
+      if (page >= 1) this.cb.onJump(page - 1);
+      this.closeDialPad();
+    };
+
+    // Layout: 7 8 9 / 4 5 6 / 1 2 3 / ⌫ 0 ✓
+    for (const key of ['7', '8', '9', '4', '5', '6', '1', '2', '3', '⌫', '0', '✓']) {
+      const btn = document.createElement('button');
+      btn.className = 'dialpad-key';
+      if (key === '⌫') btn.className += ' dialpad-key-back';
+      if (key === '✓') btn.className += ' dialpad-key-confirm';
+      btn.textContent = key;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (key === '⌫') backspace();
+        else if (key === '✓') confirm();
+        else appendDigit(key);
+      });
+      grid.appendChild(btn);
+    }
+
+    pad.append(this.dialpadDisplay, grid);
+    backdrop.appendChild(pad);
+    backdrop.addEventListener('click', () => this.closeDialPad());
+    pad.addEventListener('click', (e) => e.stopPropagation());
+
+    document.body.appendChild(backdrop);
+    this.dialpadEl = backdrop;
+  }
+
+  private showDialPad(): void {
+    if (!this.dialpadEl) this.buildDialPad();
+    this.dialpadValue = '';
+    if (this.dialpadDisplay) this.dialpadDisplay.textContent = '';
+    this.dialpadOpen = true;
+    this.dialpadEl!.classList.remove('hidden');
+    if (this.hideTimer) { clearTimeout(this.hideTimer); this.hideTimer = null; }
+  }
+
+  private closeDialPad(): void {
+    this.dialpadOpen = false;
+    this.dialpadEl?.classList.add('hidden');
+    this.poke();
+  }
+
+  // ---- Swipe & hover ----
+
   private attachSwipeUp(): void {
     let startY = 0;
     let tracking = false;
@@ -303,6 +335,8 @@ export class ControlOverlay {
   hide(): void {
     this.root.classList.add('hidden');
     this.hideQuitConfirm();
+    this.dialpadOpen = false;
+    this.dialpadEl?.classList.add('hidden');
     // Reset to collapsed state so next show starts clean
     this.expanded = false;
     this.root.classList.remove('expanded');
@@ -310,13 +344,21 @@ export class ControlOverlay {
 
   private poke(): void {
     if (this.hideTimer) clearTimeout(this.hideTimer);
-    if (this.hovered) return;
+    if (this.hovered || this.dialpadOpen) return;
     this.hideTimer = setTimeout(() => this.hide(), AUTO_HIDE_MS);
   }
 
-  /** Update the book title shown above the progress row. */
+  /** Update the combined title · page header line. */
+  private updateHeader(): void {
+    this.titleEl.textContent =
+      this.bookTitle && this.pageLabel
+        ? `${this.bookTitle} · ${this.pageLabel}`
+        : this.bookTitle || this.pageLabel;
+  }
+
   setBookTitle(title: string): void {
-    this.titleEl.textContent = title;
+    this.bookTitle = title;
+    this.updateHeader();
   }
 
   /** Highlight the button matching the current zoom preset. */
@@ -335,16 +377,14 @@ export class ControlOverlay {
   }
 
   setProgress(pages: number[], totalPages: number): void {
-    this.totalPages = totalPages;
     if (pages.length === 0 || totalPages <= 0) {
-      this.progressLabel.textContent = '';
-      this.progressFill.style.width = '0%';
-      return;
+      this.pageLabel = '';
+    } else {
+      const first = Math.min(...pages) + 1;
+      const last = Math.max(...pages) + 1;
+      this.pageLabel =
+        first === last ? `${first} / ${totalPages}` : `${first}–${last} / ${totalPages}`;
     }
-    const first = Math.min(...pages) + 1;
-    const last = Math.max(...pages) + 1;
-    this.progressLabel.textContent =
-      first === last ? `${first} / ${totalPages}` : `${first}–${last} / ${totalPages}`;
-    this.progressFill.style.width = `${Math.round((last / totalPages) * 100)}%`;
+    this.updateHeader();
   }
 }

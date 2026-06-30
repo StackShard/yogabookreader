@@ -14,10 +14,90 @@ export interface GalleryItem {
   subtitle?: string;
 }
 
-function tile(item: GalleryItem, onOpen: (filePath: string) => void): HTMLElement {
+function showTileContextMenu(
+  item: GalleryItem,
+  onRemove: (filePath: string) => void,
+): void {
+  document.querySelector('.tile-ctx-backdrop')?.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'tile-ctx-backdrop';
+
+  const menu = document.createElement('div');
+  menu.className = 'tile-context-menu';
+
+  const label = document.createElement('div');
+  label.className = 'tile-ctx-label';
+  label.textContent = item.displayName;
+
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'tile-ctx-remove';
+  removeBtn.textContent = 'Remove from Recent';
+  removeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    backdrop.remove();
+    onRemove(item.filePath);
+  });
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'tile-ctx-cancel';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    backdrop.remove();
+  });
+
+  menu.append(label, removeBtn, cancelBtn);
+  backdrop.appendChild(menu);
+  backdrop.addEventListener('click', () => backdrop.remove());
+  document.body.appendChild(backdrop);
+}
+
+function tile(
+  item: GalleryItem,
+  onOpen: (filePath: string) => void,
+  onRemoveRecent?: (filePath: string) => void,
+): HTMLElement {
   const el = document.createElement('button');
   el.className = 'tile';
-  el.addEventListener('click', () => onOpen(item.filePath));
+
+  let longPressConsumed = false;
+
+  el.addEventListener('click', () => {
+    if (longPressConsumed) { longPressConsumed = false; return; }
+    onOpen(item.filePath);
+  });
+
+  if (onRemoveRecent) {
+    let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+    let startX = 0;
+    let startY = 0;
+
+    el.addEventListener('pointerdown', (e) => {
+      startX = e.clientX;
+      startY = e.clientY;
+      longPressConsumed = false;
+      longPressTimer = setTimeout(() => {
+        longPressTimer = null;
+        longPressConsumed = true;
+        showTileContextMenu(item, onRemoveRecent!);
+      }, 500);
+    });
+
+    el.addEventListener('pointermove', (e) => {
+      if (!longPressTimer) return;
+      if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    });
+
+    const cancelLp = () => {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    };
+    el.addEventListener('pointerup', cancelLp);
+    el.addEventListener('pointercancel', cancelLp);
+  }
 
   const cover = document.createElement('div');
   cover.className = 'tile-cover tile-cover-placeholder';
@@ -54,16 +134,18 @@ export function renderGallery(
   container: HTMLElement,
   items: GalleryItem[],
   onOpen: (filePath: string) => void,
+  onRemoveRecent?: (filePath: string) => void,
 ): void {
   container.innerHTML = '';
-  if (items.length === 0) {
+  const displayItems = items.slice(0, 8);
+  if (displayItems.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'gallery-empty';
     empty.textContent = 'Nothing here yet.';
     container.appendChild(empty);
     return;
   }
-  for (const item of items) container.appendChild(tile(item, onOpen));
+  for (const item of displayItems) container.appendChild(tile(item, onOpen, onRemoveRecent));
 }
 
 /** Render the library as one collapsible section per sub-folder. */
@@ -76,7 +158,7 @@ export function renderLibrary(
   if (groups.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'gallery-empty';
-    empty.textContent = 'No folder selected yet — tap “Choose folder” to build your library.';
+    empty.textContent = 'No folder selected yet — tap "Choose folder" to build your library.';
     container.appendChild(empty);
     return;
   }

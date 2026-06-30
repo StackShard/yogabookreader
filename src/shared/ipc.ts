@@ -87,6 +87,7 @@ export const RendererToMain = {
   setSpreadEncoded: 'r2m:set-spread-encoded',
   getRecentFiles: 'r2m:get-recent-files',
   clearRecentFiles: 'r2m:clear-recent-files',
+  removeRecentFile: 'r2m:remove-recent-file',
   getSettings: 'r2m:get-settings',
   requestOverlay: 'r2m:request-overlay',
   toggleFullScreen: 'r2m:toggle-full-screen',
@@ -151,6 +152,7 @@ export interface ReaderBridge {
 
   getRecentFiles(): Promise<RecentFileView[]>;
   clearRecentFiles(): void;
+  removeRecentFile(filePath: string): void;
   getSettings(): Promise<AppSettings>;
   getLibrary(): Promise<LibraryGroup[]>;
   getLibraryCached(): Promise<LibraryGroup[]>;

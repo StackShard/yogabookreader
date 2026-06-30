@@ -23,7 +23,7 @@ import {
 } from './types.js';
 
 /** How many entries the recent-files list retains. */
-export const MAX_RECENT_FILES = 24;
+export const MAX_RECENT_FILES = 8;
 
 const READING_DIRECTIONS: ReadingDirection[] = ['ltr', 'rtl'];
 const ZOOM_PRESETS: ZoomPreset[] = ['fit-height', 'fit-width', 'full-bleed'];

@@ -175,7 +175,7 @@ body {
   pointer-events: none;
 }
 
-/* Book title above the progress row */
+/* Book title + page numbers header */
 .overlay-title {
   font-size: 13px;
   color: var(--muted);
@@ -185,64 +185,6 @@ body {
   text-align: center;
   margin-bottom: 6px;
   min-height: 1em;
-}
-
-/* Progress row: page label + goto input + go button + bar */
-.overlay-progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.overlay-progress-label {
-  font-size: 15px;
-  color: var(--muted);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-  min-width: 72px;
-}
-
-.overlay-goto-input {
-  font-size: 16px;
-  min-height: 44px;
-  padding: 8px 10px;
-  width: 68px;
-  border-radius: var(--radius);
-  border: 1px solid #3a3a3e;
-  background: var(--surface);
-  color: var(--fg);
-  flex-shrink: 0;
-}
-
-.overlay-btn-go {
-  min-width: unset;
-  padding: 8px 14px;
-  min-height: 44px;
-  font-size: 15px;
-  background: var(--accent);
-  color: #fff;
-  flex-shrink: 0;
-}
-.overlay-btn-go:active {
-  background: var(--accent-press);
-}
-
-.overlay-progress-track {
-  flex: 1;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  overflow: hidden;
-  min-width: 40px;
-}
-
-.overlay-progress-fill {
-  height: 100%;
-  width: 0%;
-  background: var(--accent);
-  border-radius: 999px;
-  transition: width 0.2s ease;
 }
 
 /* Primary bar */
@@ -356,6 +298,7 @@ body {
 .overlay-settings-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
@@ -705,4 +648,147 @@ body {
   padding: 10%;
   color: var(--muted);
   font-size: 22px;
+}
+
+/* ---- Dial-pad page picker ---- */
+.dialpad-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialpad-overlay.hidden {
+  display: none;
+}
+
+.dialpad {
+  background: var(--surface);
+  border-radius: calc(var(--radius) * 1.5);
+  padding: 16px;
+  width: 256px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.dialpad-display {
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding: 8px 12px 14px;
+  color: var(--fg);
+  min-height: 52px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 10px;
+  letter-spacing: 0.05em;
+}
+
+.dialpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.dialpad-key {
+  min-height: 64px;
+  font-size: 22px;
+  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--fg);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.dialpad-key:active {
+  background: var(--accent-press);
+  color: #fff;
+}
+
+.dialpad-key-back {
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.dialpad-key-confirm {
+  background: var(--accent);
+  color: #fff;
+}
+
+.dialpad-key-confirm:active {
+  background: var(--accent-press);
+}
+
+/* ---- Library section divider ---- */
+.section-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 24px 0;
+}
+
+/* ---- Tile long-press context menu ---- */
+.tile-ctx-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tile-context-menu {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px;
+  min-width: 260px;
+  max-width: 80vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tile-ctx-label {
+  font-size: 14px;
+  color: var(--muted);
+  padding: 0 4px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tile-ctx-remove {
+  min-height: 56px;
+  font-size: 17px;
+  font-weight: 600;
+  background: rgba(220, 50, 50, 0.2);
+  color: #ff7070;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.tile-ctx-remove:active {
+  background: rgba(220, 50, 50, 0.42);
+}
+
+.tile-ctx-cancel {
+  min-height: 56px;
+  font-size: 17px;
+  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--fg);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.tile-ctx-cancel:active {
+  background: var(--surface);
 }

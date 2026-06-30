@@ -42,6 +42,7 @@ import {
   getRecentFiles,
   getSettings,
   recordRecentFile,
+  removeRecentFile,
   saveFileState,
   setLibraryCache,
   updateSettings,
@@ -115,6 +116,9 @@ export class ReaderController {
     );
     ipcMain.on(RendererToMain.clearRecentFiles, () => {
       clearRecentFiles();
+    });
+    ipcMain.on(RendererToMain.removeRecentFile, (_e, filePath: string) => {
+      removeRecentFile(filePath);
     });
     ipcMain.handle(RendererToMain.getSettings, () => getSettings());
     ipcMain.handle(RendererToMain.getLibrary, () => this.getLibrary());
