@@ -2,6 +2,22 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
+## [1.1.2] — 2026-06-29
+
+### Overlay Refinements
+- **Progress bar removed** — cleaner overlay; book title and page numbers merged into one header line (`Title · 54-55 / 66`)
+- **Dial-pad page picker** — new `# Pg` button in the settings strip opens a 3x4 numpad dial pad for keyboard-free page entry; backdrop tap dismisses; overlay auto-hide pauses while open
+- **Settings strip centered** — buttons are now centre-aligned for a more balanced look
+
+### Library Improvements
+- **Recent files capped at 8** (was 24) in both storage and display
+- **Thin separator** between Recent and Library sections
+- **Individual recent-file removal** — long-press a recent tile to see a context menu with the book title, Remove, and Cancel
+- **Clear Recent with confirmation** — Clear button now requires a second tap ("Really clear?") that auto-reverts after 4 s to prevent accidental clears
+
+### IPC & Internals
+- New `r2m:remove-recent-file` IPC channel for single-entry recent-file removal
+
 ## [1.1.1] — 2026-06-29
 
 ### New Gestures & Shortcuts
