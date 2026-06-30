@@ -37,21 +37,31 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: Yoga Book Reader ${{ github.event.inputs.tag || github.ref_name }}
           body: |
-            ## Changes in v1.1.2
+            ## Changes in v1.1.3
 
-            ### Overlay Refinements
-            - **Progress bar removed** — cleaner overlay; book title and page numbers merged into one header line (`Title · 54-55 / 66`)
-            - **Dial-pad page picker** — new `# Pg` button in the settings strip opens a 3x4 numpad dial pad for keyboard-free page entry; backdrop tap dismisses; overlay auto-hide pauses while dial pad is open
-            - **Settings strip centered** — buttons are now centre-aligned for a more balanced look
+            ### Reading Progress
+            - **Saved page counts** — per-file and recent entries remember their total page count
+            - **Progress bars** on Recent and Library tiles
+            - **Continue card** on the splash screen to jump straight back into the last book
 
-            ### Library Improvements
-            - **Recent files capped at 8** (was 24) to reduce clutter
-            - **Thin separator** between Recent and Library sections
-            - **Individual recent-file removal** — long-press a recent tile to see a context menu with the book title, Remove, and Cancel
-            - **Clear Recent with confirmation** — Clear button now requires a second tap ("Really clear?") that auto-reverts after 4 s to prevent accidental clears
+            ### Library
+            - **Search** box to filter the library, and **sort** by title, type, or progress
+            - **Remembered sections** — expanded folders persist across launches, plus a **Collapse all** button
+            - **Clean missing** — drop recent entries whose files no longer exist
+            - **Clear covers** — empty the cover-thumbnail cache
 
-            ### Internals
-            - New `r2m:remove-recent-file` IPC channel for single-entry recent-file removal
+            ### Reader & Overlay
+            - **Error recovery actions** — choose another file, open the library, or remove the entry from Recent
+            - **Refreshed overlay** — compact icon-style controls plus a fullscreen button
+            - **Live calibration** — tap-zone and grip sliders adjust touch zones on the fly, and the help overlay reflects the current zones
+
+            ### Diagnostics & Hardening
+            - **Display diagnostics** on the splash screen
+            - **External-link allowlist** — external links are restricted to a trusted HTTPS host
+
+            ### Performance
+            - **Faster library load** — per-file state is read once per scan instead of once per entry
+            - **Searchable matches** — searching opens matching sections so results are always visible
           draft: false
           prerelease: false
           files: dist/*.exe

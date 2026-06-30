@@ -2,6 +2,32 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
+## [1.1.3] — 2026-06-30
+
+### Reading Progress
+- **Saved page counts** — per-file and recent entries remember their total page count
+- **Progress bars** on Recent and Library tiles
+- **Continue card** on the splash screen to jump straight back into the last book
+
+### Library
+- **Search** box to filter the library, and **sort** by title, type, or progress
+- **Remembered sections** — expanded folders persist across launches, plus a **Collapse all** button
+- **Clean missing** — drop recent entries whose files no longer exist
+- **Clear covers** — empty the cover-thumbnail cache
+
+### Reader & Overlay
+- **Error recovery actions** — the error screen now offers Choose another file, Open library, and Remove from Recent
+- **Refreshed overlay** — compact icon-style controls plus a fullscreen button
+- **Live calibration** — tap-zone and grip sliders adjust touch zones on the fly, and the help overlay reflects the current zones
+
+### Diagnostics & Hardening
+- **Display diagnostics** on the splash screen
+- **External-link allowlist** — external links are restricted to a trusted HTTPS host
+
+### Performance
+- **Faster library load** — per-file state is read once per scan instead of once per entry
+- **Searchable matches** — searching opens matching sections so results are always visible
+
 ## [1.1.2] — 2026-06-29
 
 ### Overlay Refinements
