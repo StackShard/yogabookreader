@@ -75,15 +75,37 @@ async function main(): Promise<void> {
   const recent = await reader.getRecentFiles().catch(() => []);
   const recentEl = document.getElementById('recent') as HTMLElement;
   function refreshRecent(): void {
-    renderGallery(recentEl, recent.map(recentToGalleryItem), openDocument);
+    renderGallery(recentEl, recent.map(recentToGalleryItem), openDocument, (fp) => {
+      reader.removeRecentFile(fp);
+      const idx = recent.findIndex((r) => r.filePath === fp);
+      if (idx !== -1) recent.splice(idx, 1);
+      refreshRecent();
+    });
   }
   refreshRecent();
 
-  document.getElementById('clear-recent')?.addEventListener('click', () => {
-    reader.clearRecentFiles();
-    recent.length = 0;
-    refreshRecent();
-  });
+  const clearBtn = document.getElementById('clear-recent') as HTMLButtonElement | null;
+  if (clearBtn) {
+    let clearConfirmPending = false;
+    let clearConfirmTimer: ReturnType<typeof setTimeout> | null = null;
+    clearBtn.addEventListener('click', () => {
+      if (!clearConfirmPending) {
+        clearConfirmPending = true;
+        clearBtn.textContent = 'Really clear?';
+        clearConfirmTimer = setTimeout(() => {
+          clearConfirmPending = false;
+          clearBtn.textContent = 'Clear';
+        }, 4000);
+      } else {
+        if (clearConfirmTimer) clearTimeout(clearConfirmTimer);
+        clearConfirmPending = false;
+        clearBtn.textContent = 'Clear';
+        reader.clearRecentFiles();
+        recent.length = 0;
+        refreshRecent();
+      }
+    });
+  }
 
   await setFolderLabel();
   // Show the cached library instantly, then refresh from a fresh scan.
