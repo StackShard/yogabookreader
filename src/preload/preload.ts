@@ -51,6 +51,10 @@ const bridge: ReaderBridge = {
     ipcRenderer.send(RendererToMain.setSpreadEncoded, value),
   nudgeSpread: () => ipcRenderer.send(RendererToMain.nudgeSpread),
   resetSpread: () => ipcRenderer.send(RendererToMain.resetSpread),
+  savePage: (pageIndex: number, dataUrl: string | null) =>
+    ipcRenderer.invoke(RendererToMain.savePage, pageIndex, dataUrl),
+  printPage: (pageIndex: number, dataUrl: string | null) =>
+    ipcRenderer.send(RendererToMain.printPage, pageIndex, dataUrl),
   requestOverlay: () => ipcRenderer.send(RendererToMain.requestOverlay),
   toggleFullScreen: () => ipcRenderer.send(RendererToMain.toggleFullScreen),
   setAdaptiveBrightnessDisabled: (disabled: boolean) =>

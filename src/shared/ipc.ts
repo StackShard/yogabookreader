@@ -89,6 +89,8 @@ export const RendererToMain = {
   setSpreadEncoded: 'r2m:set-spread-encoded',
   nudgeSpread: 'r2m:nudge-spread',
   resetSpread: 'r2m:reset-spread',
+  savePage: 'r2m:save-page',
+  printPage: 'r2m:print-page',
   getRecentFiles: 'r2m:get-recent-files',
   clearRecentFiles: 'r2m:clear-recent-files',
   removeRecentFile: 'r2m:remove-recent-file',
@@ -155,6 +157,14 @@ export interface ReaderBridge {
   nudgeSpread(): void;
   /** Clear all phase nudges, restoring normal pairing. */
   resetSpread(): void;
+  /**
+   * Save one page to a file. `dataUrl` carries the rendered PNG for PDF pages;
+   * pass null for comic pages (main copies the original image). Resolves true
+   * when a file was written, false if the user cancelled.
+   */
+  savePage(pageIndex: number, dataUrl: string | null): Promise<boolean>;
+  /** Print one page via the system print dialog. `dataUrl` as for {@link savePage}. */
+  printPage(pageIndex: number, dataUrl: string | null): void;
   requestOverlay(): void;
   toggleFullScreen(): void;
   setAdaptiveBrightnessDisabled(disabled: boolean): void;

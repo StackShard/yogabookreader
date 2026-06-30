@@ -2,6 +2,22 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
+## [1.1.4-beta] — 2026-06-30
+
+> Beta / pre-release.
+
+### Page Actions
+- **Save or print a page** — hold (long-press) the centre "Tap for menu" area of
+  either screen to open a **Save page** / **Print page** menu for the page shown
+  there (works on both screens). Save uses an intelligent, collision-free name
+  (`<Title> - p<N>.<ext>` in Pictures); comics save the original image, PDF pages
+  save as a high-res PNG. Print goes to the system print dialog.
+
+### Reader Polish
+- **Jump Page dial pad** sits lower on screen, closer to the button, and its
+  number display no longer jumps taller when you type the first digit.
+- **Splash**: the Quit button is now the leftmost action, matching the reader bar.
+
 ## [1.1.3] — 2026-06-30
 
 ### Spread Alignment
