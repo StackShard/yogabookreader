@@ -400,27 +400,64 @@ export class ReaderController {
     }
   }
 
-  /** Print one page via the system print dialog (hidden window shows the image). */
+  /**
+   * Print one page via the system print dialog. The page image is wrapped in a
+   * tiny full-page HTML document so it scales to fill the sheet (a bare image
+   * prints at its natural pixel size). No preview — that's an Electron limitation
+   * of the native print path.
+   */
   private async printPage(pageIndex: number, dataUrl: string | null): Promise<void> {
     const source = this.pageSource(pageIndex, dataUrl);
     if (!source) return;
+
+    const dir = path.join(app.getPath('temp'), 'yogabookreader-print');
+    await fs.mkdir(dir, { recursive: true });
+    const stamp = `${pageIndex + 1}-${Date.now()}`;
+
+    // The image to print: comic original on disk, or a temp PNG from the PDF render.
     let imagePath: string;
+    let tempPng: string | null = null;
     if (source.kind === 'image') {
       imagePath = source.srcPath;
     } else {
-      const dir = path.join(app.getPath('temp'), 'yogabookreader-print');
-      await fs.mkdir(dir, { recursive: true });
-      imagePath = path.join(dir, `page-${pageIndex + 1}-${Date.now()}.png`);
-      await fs.writeFile(imagePath, source.bytes);
+      tempPng = path.join(dir, `page-${stamp}.png`);
+      await fs.writeFile(tempPng, source.bytes);
+      imagePath = tempPng;
     }
+
+    // Full-page wrapper so the image fills the sheet (aspect preserved). Loaded
+    // via the privileged scheme so the page and its <img> share one origin.
+    const htmlPath = path.join(dir, `page-${stamp}.html`);
+    const html =
+      '<!doctype html><meta charset="utf-8">' +
+      '<style>' +
+      '@page { margin: 6mm; }' +
+      'html,body { margin:0; padding:0; height:100%; }' +
+      'body { display:flex; align-items:center; justify-content:center; }' +
+      'img { max-width:100%; max-height:100%; object-fit:contain; }' +
+      '</style>' +
+      `<img src="${coverUrl(imagePath)}">`;
+    await fs.writeFile(htmlPath, html, 'utf8');
+
     const win = new BrowserWindow({ show: false, webPreferences: { sandbox: false } });
     const cleanup = (): void => {
       if (!win.isDestroyed()) win.destroy();
-      if (source.kind === 'pdf') void fs.rm(imagePath, { force: true }).catch(() => undefined);
+      void fs.rm(htmlPath, { force: true }).catch(() => undefined);
+      if (tempPng) void fs.rm(tempPng, { force: true }).catch(() => undefined);
     };
     try {
-      await win.loadURL(coverUrl(imagePath)); // correct image mime via the privileged scheme
-      win.webContents.print({}, () => cleanup());
+      await win.loadURL(coverUrl(htmlPath));
+      // Match orientation to the page so wide / centerfold pages fill the sheet.
+      let landscape = false;
+      try {
+        const dims = (await win.webContents.executeJavaScript(
+          '({w:document.images[0]?.naturalWidth||0,h:document.images[0]?.naturalHeight||0})',
+        )) as { w: number; h: number };
+        landscape = dims.w > dims.h;
+      } catch {
+        /* default portrait */
+      }
+      win.webContents.print({ landscape }, () => cleanup());
     } catch (err) {
       logError('printPage render failed:', err);
       cleanup();
