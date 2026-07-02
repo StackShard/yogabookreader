@@ -94,6 +94,32 @@ async function renderImageCover(url: string): Promise<string | null> {
 // Library), or a re-render racing a slow generation, must not run twice.
 const inFlight = new Map<string, Promise<string | null>>();
 
+// Batch cache-check results from the most recent primeCoverCache() call: a
+// large library render used to fire one getCachedCover IPC call PER TILE
+// (hundreds/thousands at once, all before the concurrency limit below even
+// applies). Priming does one bulk IPC call up front; getCover then reads
+// from this map instead of hitting IPC per file.
+const cachedUrls = new Map<string, string>();
+const primed = new Set<string>();
+let primePromise: Promise<void> | null = null;
+
+/**
+ * Batch-check the cover cache for a whole set of files in one IPC round trip,
+ * so a library render doesn't fire one cache-check call per tile. Call this
+ * right before rendering a large gallery; getCover() will wait for it.
+ */
+export function primeCoverCache(filePaths: string[]): Promise<void> {
+  const p = window.reader
+    .getCachedCovers(filePaths)
+    .then((hits) => {
+      for (const [fp, url] of Object.entries(hits)) cachedUrls.set(fp, url);
+      for (const fp of filePaths) primed.add(fp);
+    })
+    .catch(() => undefined);
+  primePromise = p;
+  return p;
+}
+
 /**
  * Return a cover image URL for a file: the cached thumbnail if present, otherwise
  * rendered + persisted on demand. Resolves null if a cover can't be produced.
@@ -107,8 +133,15 @@ export function getCover(filePath: string): Promise<string | null> {
 }
 
 async function generateCover(filePath: string): Promise<string | null> {
-  const cached = await window.reader.getCachedCover(filePath).catch(() => null);
-  if (cached) return cached;
+  if (primePromise) await primePromise;
+  const primedHit = cachedUrls.get(filePath);
+  if (primedHit) return primedHit;
+  if (!primed.has(filePath)) {
+    // Not covered by the last batch prime (e.g. added afterward) — fall back
+    // to the single-item check rather than skipping the cache entirely.
+    const cached = await window.reader.getCachedCover(filePath).catch(() => null);
+    if (cached) return cached;
+  }
 
   genTotal++;
   emitProgress();

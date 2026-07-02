@@ -229,6 +229,11 @@ export function renderLibrary(
   }
 }
 
+/** All file paths across every group, for batch-priming the cover cache before a render. */
+export function libraryFilePaths(groups: LibraryGroup[]): string[] {
+  return groups.flatMap((g) => g.items.map((i) => i.filePath));
+}
+
 export function recentToGalleryItem(f: RecentFileView): GalleryItem {
   return {
     filePath: f.filePath,

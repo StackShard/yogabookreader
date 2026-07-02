@@ -80,6 +80,7 @@ const bridge: ReaderBridge = {
   pickFolder: () => ipcRenderer.invoke(RendererToMain.pickFolder),
   getResumeInfo: () => ipcRenderer.invoke(RendererToMain.getResumeInfo),
   getCachedCover: (filePath: string) => ipcRenderer.invoke(RendererToMain.getCachedCover, filePath),
+  getCachedCovers: (filePaths: string[]) => ipcRenderer.invoke(RendererToMain.getCachedCovers, filePaths),
   getCoverSource: (filePath: string) => ipcRenderer.invoke(RendererToMain.getCoverSource, filePath),
   saveCover: (filePath: string, dataUrl: string) =>
     ipcRenderer.invoke(RendererToMain.saveCover, filePath, dataUrl),

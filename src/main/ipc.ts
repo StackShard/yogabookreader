@@ -14,6 +14,7 @@ import {
   type ReadingDirection,
   type ZoomPreset,
 } from '../core/types.js';
+import { matchCachedCovers } from '../core/covers.js';
 import {
   MainToRenderer,
   RendererToMain,
@@ -154,6 +155,7 @@ export class ReaderController {
     ipcMain.handle(RendererToMain.pickFolder, () => this.pickFolder());
     ipcMain.handle(RendererToMain.getResumeInfo, () => this.getResumeInfo());
     ipcMain.handle(RendererToMain.getCachedCover, (_e, fp: string) => this.getCachedCover(fp));
+    ipcMain.handle(RendererToMain.getCachedCovers, (_e, fps: string[]) => this.getCachedCovers(fps));
     ipcMain.handle(RendererToMain.getCoverSource, (_e, fp: string) => this.getCoverSource(fp));
     ipcMain.handle(RendererToMain.saveCover, (_e, fp: string, durl: string) =>
       this.saveCover(fp, durl),
@@ -317,6 +319,25 @@ export class ReaderController {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Batch cache check: one `fs.readdir` of the thumbnail cache dir instead of
+   * one `fs.access` per file. Replaces up to hundreds/thousands of individual
+   * {@link getCachedCover} IPC round trips when a large library renders.
+   */
+  private async getCachedCovers(filePaths: string[]): Promise<Record<string, string>> {
+    const dir = thumbnailCacheDir();
+    let names: string[];
+    try {
+      names = await fs.readdir(dir);
+    } catch {
+      return {};
+    }
+    const hits = matchCachedCovers(filePaths, new Set(names), (fp) => `${hashPath(fp)}.jpg`);
+    const result: Record<string, string> = {};
+    for (const [filePath, name] of hits) result[filePath] = coverUrl(path.join(dir, name));
+    return result;
   }
 
   /** The source the renderer needs to rasterize a cover (PDF file or first image). */

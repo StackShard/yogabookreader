@@ -2,6 +2,23 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
+## [Unreleased]
+
+### Performance
+- **Launch no longer blocks on temp cleanup** — a large leftover comic-
+  extraction temp directory (which only accumulates after a crash or
+  force-quit) could previously delay the very first window paint by many
+  seconds with zero visual feedback. Cleanup now runs without blocking window
+  creation, and is race-safe against a concurrent file open.
+- **Splash screen shows a loading spinner** during the initial data load
+  instead of appearing frozen.
+- **Library rendering no longer floods the app with cache-check calls** —
+  large libraries (hundreds/thousands of items) now check which covers are
+  already cached in one batched call instead of one call per item.
+- **State reads no longer re-read the whole settings file from disk** on
+  every call; the app keeps an in-memory copy in sync instead, which matters
+  most for large libraries with lots of tracked reading progress.
+
 ## [1.1.6] — 2026-07-02
 
 > First stable release since v1.1.3 — supersedes the v1.1.4-beta and
