@@ -42,6 +42,10 @@ jobs:
             ### Reading
             - **Two-page spread on a single landscape screen.** A single wide display now shows two pages side by side in one window — an open-book spread, like the dual-screen experience — instead of one page at a time. On by default, using the same pairing/cover/centerfold/RTL rules as dual-screen mode.
             - **Toggle** it with **▦ Two-up** in the ⚙ Settings strip (shown only on a single landscape screen). Rotating between portrait and landscape switches modes automatically. A single portrait screen still shows one page at a time.
+
+            ### Launch
+            - **Portable build shows a "Loading…" splash while it extracts.** The portable `.exe` unpacks itself (and Defender scans it) before the app can start — previously a blank, frozen-looking gap of up to ~20s on slow disks. It now shows a branded splash during that unpack so it's clearly launching.
+            - **README explains the portable-vs-installer launch-speed difference** — the installer runs in place and launches fast; the portable build trades a slower first launch for being a single no-install file. Use the installer if launch time bothers you.
           draft: false
           # Tags containing "beta" (e.g. v1.1.4-beta) publish as pre-releases.
           prerelease: ${{ contains(github.event.inputs.tag || github.ref_name, 'beta') }}

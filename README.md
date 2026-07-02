@@ -37,12 +37,30 @@ That's it. No specific brand, model, or resolution required.
 
 ### Download & Run
 
-1. Go to the **[Releases page](https://github.com/StackShard/yogabookreader/releases)**
-2. Download the latest `YogaBookReader-*-portable.exe` from the release assets
-3. Double-click to run — no installation needed
+Two downloads are offered on the Releases page. **They run the same app — the
+only difference is launch speed:**
 
-You can also download the **installer** version (`YogaBookReader-*-setup-x64.exe`)
-if you prefer a traditional Start menu entry and desktop shortcut.
+| Download | Install | Launch speed |
+| --- | --- | --- |
+| `YogaBookReader-*-setup-x64.exe` (**installer, recommended**) | Start-menu entry + shortcut | **Fast** — runs in place |
+| `YogaBookReader-*-portable.exe` | None — single file | **Slower to start** — see below |
+
+1. Go to the **[Releases page](https://github.com/StackShard/yogabookreader/releases)**
+2. Download the **installer** (`YogaBookReader-*-setup-x64.exe`) for the fastest
+   launch, or the **portable** (`YogaBookReader-*-portable.exe`) if you want a
+   single no-install file (e.g. to run from a USB stick)
+3. Double-click to run
+
+> **⏳ Why the portable build starts slowly.** The portable `.exe` is a
+> self-contained archive: every time you launch it, Windows first unpacks the
+> app (a few hundred megabytes, including the browser engine it's built on) into
+> a temporary folder, and Windows Defender scans those files, *before* the app
+> itself can start. On a slower disk this first unpack can take **10–25 seconds**,
+> during which you'll see a small **"Yoga Book Reader — Loading…"** splash while
+> it extracts. Later launches of the *same* version are much faster because the
+> unpacked copy is reused (until Windows clears the temp folder). **The installer
+> avoids all of this** — it unpacks once at install time and every launch is
+> fast — so if slow launches bother you, use the installer.
 
 ### ⚠️ Windows SmartScreen Warning
 
