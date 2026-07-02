@@ -10,11 +10,14 @@
 export type ReadingDirection = 'ltr' | 'rtl';
 
 /**
- * How many physical displays are driving the reading surface right now.
- * `dual`   = both Yoga Book screens (the normal two-page-spread experience).
- * `single` = folded / one display available -> single-page fallback.
+ * How the reading surface is driven right now.
+ * `dual`         = both Yoga Book screens (the normal two-page-spread experience).
+ * `single`       = folded / one portrait display -> one page at a time.
+ * `single-twoup` = one wide landscape display showing a two-page spread
+ *                  side-by-side in a single window (US: landscape two-up). Uses
+ *                  the same pairing as `dual`, but both pages render in one window.
  */
-export type DisplayMode = 'dual' | 'single';
+export type DisplayMode = 'dual' | 'single' | 'single-twoup';
 
 /** How a page is sized to fill a screen. */
 export type ZoomPreset = 'fit-height' | 'fit-width' | 'full-bleed';
@@ -122,6 +125,12 @@ export interface AppSettings {
   /** v2 page-curl animation toggle. Off in v1. */
   animationsEnabled: boolean;
   windowedMode: boolean;
+  /**
+   * On a single **landscape** display, show two pages side-by-side (a two-page
+   * spread in one window) instead of one page at a time. Default on. No effect
+   * on dual screens or a single portrait display. Toggle in the reader overlay.
+   */
+  landscapeTwoUp: boolean;
 }
 
 /** Top-level persisted blob written to the state file. */
@@ -144,6 +153,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   helpShown: false,
   animationsEnabled: false,
   windowedMode: false,
+  landscapeTwoUp: true, // auto two-up on a single landscape screen
 };
 
 /** Zoom presets in the order the double-tap gesture cycles through them. */

@@ -77,6 +77,9 @@ function isWideAspect(doc: DocumentModel, i: number): boolean {
  *
  * In `single` display mode (folded Yoga Book, US#26) every page is shown alone
  * on the one available screen; the spanning/cover/pairing rules are bypassed.
+ * `dual` and `single-twoup` both produce paired left/right spreads — they differ
+ * only in how many physical windows paint them (two windows vs. one), which is a
+ * render concern, not a layout one, so they share this pairing logic.
  */
 export function buildSpreads(
   doc: DocumentModel,

@@ -32,6 +32,18 @@ export function isReadingDisplay(d: DisplayInfo): boolean {
   return d.bounds.height > d.bounds.width;
 }
 
+/** True when a display is landscape (wider than tall) — wide enough for a
+ *  side-by-side two-page spread in a single window. */
+export function isLandscape(d: DisplayInfo): boolean {
+  return d.bounds.width > d.bounds.height;
+}
+
+/** True when the placement is a single display in landscape orientation — the
+ *  only case where the side-by-side "two-up" spread option applies. */
+export function isSingleLandscape(placement: Placement): boolean {
+  return placement.mode === 'single' && isLandscape(placement.display);
+}
+
 /** The topmost-then-leftmost display, used as the single-mode screen. */
 function primaryOf(displays: DisplayInfo[]): DisplayInfo {
   return [...displays].sort((a, b) => a.bounds.y - b.bounds.y || a.bounds.x - b.bounds.x)[0];
