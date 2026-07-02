@@ -6,13 +6,14 @@
  * exit. Role-aware: in dual mode only the primary screen shows the gallery.
  */
 
-import type { LayoutInfo, LibraryGroup, RecentFileView, WindowRole } from '../shared/ipc.js';
+import type { LayoutInfo, LibraryGroup, ReaderBridge, RecentFileView, WindowRole } from '../shared/ipc.js';
 import {
   renderGallery,
   renderLibrary,
   recentToGalleryItem,
+  libraryFilePaths,
 } from './library.js';
-import { onCoverProgress } from './cover.js';
+import { onCoverProgress, primeCoverCache } from './cover.js';
 import { setStatus } from './toast.js';
 
 function readRole(): WindowRole {
@@ -52,14 +53,28 @@ function openDocument(filePath: string): void {
 async function main(): Promise<void> {
   const reader = window.reader;
   const role = readRole();
+  const loadingEl = document.getElementById('loading');
+  const hideLoading = (): void => loadingEl?.classList.add('hidden');
 
-  // Secondary screen in dual mode: show only a hint, no mirrored gallery.
+  // Secondary screen in dual mode: show only a hint, no mirrored gallery —
+  // never has content to wait for, so hide the spinner immediately.
   if (role === 'left') {
     document.getElementById('primary-view')?.setAttribute('hidden', '');
     document.getElementById('secondary-view')?.removeAttribute('hidden');
+    hideLoading();
     return;
   }
 
+  try {
+    await mainForPrimaryView(reader, hideLoading);
+  } finally {
+    // Safety net: an unexpected throw shouldn't leave the spinner stuck
+    // forever (individual steps already have their own .catch fallbacks).
+    hideLoading();
+  }
+}
+
+async function mainForPrimaryView(reader: ReaderBridge, hideLoading: () => void): Promise<void> {
   const libraryEl = document.getElementById('library') as HTMLElement;
   const folderEl = document.getElementById('library-folder') as HTMLElement;
   const recentEl = document.getElementById('recent') as HTMLElement;
@@ -104,8 +119,9 @@ async function main(): Promise<void> {
     setStatus('Scanning folder…');
     void reader
       .pickFolder()
-      .then((groups) => {
+      .then(async (groups) => {
         libraryGroups = groups;
+        await primeCoverCache(libraryFilePaths(groups));
         refreshLibrary();
         return setFolderLabel();
       })
@@ -132,14 +148,17 @@ async function main(): Promise<void> {
   // Cover management: clear the thumbnail cache and rebuild visible covers.
   document.getElementById('regen-covers')?.addEventListener('click', () => {
     setStatus('Regenerating covers…');
-    void reader.clearCoverCache().finally(() => {
-      refreshRecent();
-      refreshLibrary();
-      // No tiles → no cover-progress events will ever fire to clear the status.
-      if (recent.length === 0 && libraryGroups.every((g) => g.items.length === 0)) {
-        setStatus(null);
-      }
-    });
+    void reader
+      .clearCoverCache()
+      .then(() => primeCoverCache(libraryFilePaths(libraryGroups)))
+      .finally(() => {
+        refreshRecent();
+        refreshLibrary();
+        // No tiles → no cover-progress events will ever fire to clear the status.
+        if (recent.length === 0 && libraryGroups.every((g) => g.items.length === 0)) {
+          setStatus(null);
+        }
+      });
   });
 
   // Offer "Resume reading" when a document is already open.
@@ -183,11 +202,22 @@ async function main(): Promise<void> {
   // replacement while the user is browsing the library).
   const cached = await reader.getLibraryCached().catch(() => []);
   libraryGroups = cached;
-  if (cached.length > 0) refreshLibrary();
-  else setStatus('Scanning folder…');
+  if (cached.length > 0) {
+    await primeCoverCache(libraryFilePaths(cached));
+    refreshLibrary();
+  } else {
+    setStatus('Scanning folder…');
+  }
+  // Recent + the cached library (if any) are now on screen — the initial
+  // paint gap is over. The fresh rescan below stays a silent background
+  // refresh (only re-renders on diff), so it shouldn't hold up the spinner.
+  hideLoading();
   const fresh = await reader.getLibrary().catch(() => []);
   if (JSON.stringify(fresh) !== JSON.stringify(libraryGroups)) {
     libraryGroups = fresh;
+    // Primes any newly-discovered items too (already-primed paths are a
+    // cheap no-op re-check server-side, not a correctness issue).
+    await primeCoverCache(libraryFilePaths(fresh));
     refreshLibrary();
   }
   if (cached.length === 0) setStatus(null);

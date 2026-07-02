@@ -60,6 +60,11 @@
     <div id="secondary-view" class="secondary-view" hidden>
       <p>Library is open on the other screen.</p>
     </div>
+    <!-- Shown until Recent + the cached library (if any) are on screen, so
+         launch never looks frozen while the initial IPC round trips resolve. -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+    </div>
     <script type="module" src="./splash.ts"></script>
   </body>
 </html>
