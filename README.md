@@ -84,6 +84,9 @@ Get-FileHash .\YogaBookReader-*-portable.exe -Algorithm SHA256
    - **Double-tap center** → cycle zoom preset (Fit Width → Fit Height → Full Bleed)
    - **Long-press left edge** → first page
    - **Long-press right edge** → last page
+   - **RTL (manga) mode** swaps the directional controls — edge taps, held
+     edges, swipes and arrow keys follow the right-to-left reading direction,
+     so the left edge turns to the next page.
 5. **Use the controls** — The overlay bar has quit, help, settings, library,
    brightness and auto-brightness controls. Tap **⚙ Settings** to open the
    settings strip (zoom presets, reading direction, **Jump Page**, and spread
@@ -97,10 +100,12 @@ Get-FileHash .\YogaBookReader-*-portable.exe -Algorithm SHA256
    containing folder**; **Clean missing** removes recents whose files are gone.
 
 **Keyboard shortcuts** (when connected):
-- **Left/Right arrow keys** — previous/next page
+- **Left/Right arrow keys** — previous/next page (swapped in RTL mode)
+- **PageUp / PageDown**, **Space / Shift+Space** — previous/next page (reading order)
 - **Home / End** — first / last page
 - **F** or **F11** — toggle fullscreen
-- **Escape** — close overlay or exit fullscreen
+- **Escape** — close the open menu/help/overlay, or toggle fullscreen
+- **Ctrl+Q** — quit
 
 ### FAQ
 
@@ -162,9 +167,9 @@ where it really shines.
 <details>
 <summary><strong>The app is already running — I can't open a second one</strong></summary>
 
-Only one instance of the app can run at a time. If you try to start a second one,
-it will silently close. Check your taskbar or system tray — the app may already be
-running.
+Only one instance of the app can run at a time. Starting a second one brings the
+already-running window to the front instead (and opens the file you launched it
+with, if any).
 </details>
 
 ---

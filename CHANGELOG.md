@@ -2,6 +2,49 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
+## [Unreleased]
+
+### Reading
+- **RTL (manga) mode now swaps the directional controls** — edge taps, held
+  edges, swipes and arrow keys follow the right-to-left reading direction, so
+  the left edge turns to the next page. The help diagram updates to match.
+- **Double-tap zoom cycling works on the left screen too** (it previously only
+  worked on the screen with the control bar).
+- **Comics with duplicate page names across sub-folders** (e.g. `ch1/01.jpg`,
+  `ch2/01.jpg`) no longer lose pages — every page extracts, in reading order.
+- A page that repeatedly fails to decode now shows a "Page N failed to load"
+  notice instead of retrying forever, and transient failures are retried
+  properly instead of being remembered as permanently broken.
+- Gestures interrupted by Windows (edge swipes, palm rejection) no longer
+  trigger a stray jump to the first/last page.
+
+### App & Library
+- **Launching the app while it's already running now focuses the running
+  window** (and opens the file passed on the command line, if any) instead of
+  closing silently. The installer registers the app as an "Open with" handler
+  for PDF/CBZ/CBR.
+- **Opening feedback** — the library shows "Opening…" immediately while a
+  large comic extracts.
+- "Regenerating covers…" no longer gets stuck when there is nothing to
+  regenerate, and covers are no longer generated twice for files shown in both
+  Recent and Library.
+
+### Controls & Polish
+- **Escape closes the topmost layer first** (page menu → help → dial pad /
+  control bar) and only toggles full-screen when nothing is open. **F / F11**
+  toggle full-screen as documented; **Shift+Space** pages backwards.
+- **Tapping the centre now toggles the control bar** instead of only showing it.
+- The Jump Page dial pad shows the page range ("of N pages") and visibly clamps
+  input beyond the last page.
+- Failed page saves show "Could not save page" instead of failing silently.
+- File-open errors gained a **Back to library** button.
+
+### Performance
+- Page turns write reading progress to disk once instead of twice, with a
+  single state load instead of four.
+- Dragging the brightness slider no longer spawns a PowerShell process per
+  tick — hardware brightness applies are coalesced so the final level wins.
+
 ## [1.1.5-beta] — 2026-06-30
 
 > Beta / pre-release.
