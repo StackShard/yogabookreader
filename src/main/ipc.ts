@@ -25,6 +25,7 @@ import {
   type ReaderError,
   type RecentFileView,
   type ResumeInfo,
+  type SavePageResult,
 } from '../shared/ipc.js';
 import {
   detectType,
@@ -47,6 +48,7 @@ import {
   recordRecentFile,
   removeRecentFile,
   saveFileState,
+  saveFileStateAndRecent,
   setLibraryCache,
   updateSettings,
 } from './state-store.js';
@@ -376,10 +378,10 @@ export class ReaderController {
     }
   }
 
-  /** Save one page to a user-chosen file. Returns true when a file was written. */
-  private async savePage(pageIndex: number, dataUrl: string | null): Promise<boolean> {
+  /** Save one page to a user-chosen file, distinguishing cancel from failure. */
+  private async savePage(pageIndex: number, dataUrl: string | null): Promise<SavePageResult> {
     const source = this.pageSource(pageIndex, dataUrl);
-    if (!source) return false;
+    if (!source) return 'failed';
     const defaultPath = await this.uniquePagePath(
       app.getPath('pictures'),
       pageIndex + 1,
@@ -389,14 +391,14 @@ export class ReaderController {
       defaultPath,
       filters: [{ name: 'Image', extensions: [source.ext.replace(/^\./, '')] }],
     });
-    if (result.canceled || !result.filePath) return false;
+    if (result.canceled || !result.filePath) return 'canceled';
     try {
       if (source.kind === 'image') await fs.copyFile(source.srcPath, result.filePath);
       else await fs.writeFile(result.filePath, source.bytes);
-      return true;
+      return 'saved';
     } catch (err) {
       logError('savePage write failed:', err);
-      return false;
+      return 'failed';
     }
   }
 
@@ -509,12 +511,16 @@ export class ReaderController {
     logError('failOpen:', error.reason, '-', error.message);
     this.session = null;
     this.pendingError = error;
+    this.broadcastStatus(null); // clear "Opening…" on any window that survives
     this.navigateAll('reader'); // reader page hosts the error UI
   }
 
   /** Open a document, building a session and broadcasting it to all windows. */
   async openDocument(filePath: string): Promise<void> {
     log('openDocument:', filePath);
+    // Immediate feedback on the splash: a large comic can take seconds to
+    // extract before any navigation happens.
+    this.broadcastStatus('Opening…');
     const token = ++this.openToken;
     const settings = getSettings();
     const fileState = getFileState(filePath);
@@ -697,22 +703,25 @@ export class ReaderController {
   private persistAndRender(): void {
     if (this.session) {
       const info = this.session.describe();
-      saveFileState({
-        filePath: info.filePath,
-        lastPage: this.session.anchorPage,
-        totalPages: info.totalPages,
-        readingDirection: info.readingDirection,
-        zoomPreset: info.zoomPreset,
-        isSpreadEncoded: info.isSpreadEncoded,
-      });
-      // Keep the recent entry's progress in step with where the reader is now.
-      recordRecentFile({
-        filePath: info.filePath,
-        displayName: info.displayName,
-        lastPage: this.session.anchorPage,
-        totalPages: info.totalPages,
-        lastReadAt: Date.now(),
-      });
+      // One combined write: this runs on every page turn, so keeping the file
+      // state and the recent entry's progress in step must not cost two writes.
+      saveFileStateAndRecent(
+        {
+          filePath: info.filePath,
+          lastPage: this.session.anchorPage,
+          totalPages: info.totalPages,
+          readingDirection: info.readingDirection,
+          zoomPreset: info.zoomPreset,
+          isSpreadEncoded: info.isSpreadEncoded,
+        },
+        {
+          filePath: info.filePath,
+          displayName: info.displayName,
+          lastPage: this.session.anchorPage,
+          totalPages: info.totalPages,
+          lastReadAt: Date.now(),
+        },
+      );
     }
     this.broadcastRender();
   }

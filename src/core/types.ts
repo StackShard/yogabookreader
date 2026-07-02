@@ -146,6 +146,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
   windowedMode: false,
 };
 
+/** Zoom presets in the order the double-tap gesture cycles through them. */
+export const ZOOM_PRESET_CYCLE: ZoomPreset[] = ['fit-height', 'fit-width', 'full-bleed'];
+
+/** The preset after `current` in the double-tap cycle. */
+export function nextZoomPreset(current: ZoomPreset): ZoomPreset {
+  const idx = ZOOM_PRESET_CYCLE.indexOf(current);
+  return ZOOM_PRESET_CYCLE[(idx + 1) % ZOOM_PRESET_CYCLE.length];
+}
+
 /** Brightness slider bounds and step (granular but fixed increments). */
 export const BRIGHTNESS_MIN = 10;
 export const BRIGHTNESS_MAX = 100;

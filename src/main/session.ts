@@ -214,6 +214,7 @@ export class ReaderSession {
       zoomPreset: this.zoomPreset,
       spreadIndex: clampSpreadIndex(this.index, this.spreads.length),
       pages: currentSpread ? pagesInSpread(currentSpread) : [],
+      readingDirection: this.model.readingDirection,
     };
   }
 

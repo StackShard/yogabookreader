@@ -11,8 +11,17 @@ import { ReaderController } from './ipc.js';
 import { createReaderWindows } from './windows.js';
 import { getSettings } from './state-store.js';
 import { cleanupAllTemp, cleanupStaleTemp } from './cbz-extractor.js';
+import { detectType } from './file-loader.js';
 import { registerFileProtocol, registerPrivilegedScheme } from './protocol.js';
 import { log } from './log.js';
+
+/** First supported document path in a command line (file association / "Open with"). */
+function fileArgFrom(argv: string[]): string | null {
+  for (const arg of argv.slice(1)) {
+    if (!arg.startsWith('-') && detectType(arg)) return arg;
+  }
+  return null;
+}
 
 // Enforce a single instance so both windows share one main process & state.
 if (!app.requestSingleInstanceLock()) {
@@ -39,6 +48,23 @@ app.whenReady().then(async () => {
   controller.registerHandlers();
   bootWindows();
   void controller.applyStoredBrightness();
+
+  // Launched with a document (file association / drag onto the .exe): open it.
+  const startupFile = fileArgFrom(process.argv);
+  if (startupFile) void controller.openDocument(startupFile);
+
+  // A second launch used to die silently (README FAQ). Focus the running app
+  // instead, and open a document if the second launch carried one.
+  app.on('second-instance', (_e, argv) => {
+    log('second-instance:', argv.join(' '));
+    const windows = controller.allWindows();
+    for (const win of windows) {
+      if (win.isMinimized()) win.restore();
+    }
+    windows[0]?.focus();
+    const file = fileArgFrom(argv);
+    if (file) void controller.openDocument(file);
+  });
 
   // Survive docking/undocking and posture changes: re-evaluate the layout.
   screen.on('display-added', () => controller.relayout());

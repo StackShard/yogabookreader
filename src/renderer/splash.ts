@@ -67,6 +67,9 @@ async function main(): Promise<void> {
   let recent: RecentFileView[] = [];
   let libraryGroups: LibraryGroup[] = [];
 
+  // Main-process progress ("Opening…" while a large comic extracts, etc.).
+  reader.onStatus((message) => setStatus(message));
+
   // Show cover-generation progress, clearing when everything has rendered.
   onCoverProgress((done, total) => {
     setStatus(done < total ? `Generating covers… ${done}/${total}` : null);
@@ -132,6 +135,10 @@ async function main(): Promise<void> {
     void reader.clearCoverCache().finally(() => {
       refreshRecent();
       refreshLibrary();
+      // No tiles → no cover-progress events will ever fire to clear the status.
+      if (recent.length === 0 && libraryGroups.every((g) => g.items.length === 0)) {
+        setStatus(null);
+      }
     });
   });
 

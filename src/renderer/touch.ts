@@ -30,6 +30,8 @@ export interface TouchOptions {
   tapZoneWidth: number;
   /** Fraction of width on each outer edge where taps are ignored (grip safety). */
   edgeDeadZone: number;
+  /** Live reading direction; directional inputs swap in RTL. Defaults to LTR. */
+  getDirection?: () => 'ltr' | 'rtl';
 }
 
 const SWIPE_THRESHOLD_PX = 60;
@@ -48,6 +50,14 @@ export function attachNavigation(
   let lastTapTime = 0;
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;
   let longPressConsumed = false;
+
+  // RTL reads right→left, so directional inputs swap: each edge turns the page
+  // the way the physical book opens (in RTL the left edge moves onward).
+  const isRtl = (): boolean => opts.getDirection?.() === 'rtl';
+  const tapLeft = (): void => (isRtl() ? cb.onNext() : cb.onPrev());
+  const tapRight = (): void => (isRtl() ? cb.onPrev() : cb.onNext());
+  const holdLeft = (): void => (isRtl() ? cb.onLongNext?.() : cb.onLongPrev?.());
+  const holdRight = (): void => (isRtl() ? cb.onLongPrev?.() : cb.onLongNext?.());
 
   const cancelLongPress = (): void => {
     if (longPressTimer) {
@@ -68,12 +78,12 @@ export function attachNavigation(
     if (fraction >= edge && fraction < side) {
       longPressTimer = setTimeout(() => {
         longPressConsumed = true;
-        cb.onLongPrev?.();
+        holdLeft();
       }, LONG_PRESS_MS);
     } else if (fraction > 1 - side && fraction <= 1 - edge) {
       longPressTimer = setTimeout(() => {
         longPressConsumed = true;
-        cb.onLongNext?.();
+        holdRight();
       }, LONG_PRESS_MS);
     } else if (fraction >= side && fraction <= 1 - side) {
       // Centre zone: hold for page actions (save / print).
@@ -104,9 +114,11 @@ export function attachNavigation(
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
 
-    // Horizontal swipe beats tap classification.
+    // Horizontal swipe beats tap classification. Swiping the page leftward
+    // advances an LTR book; the reverse for RTL.
     if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy)) {
-      if (dx < 0) cb.onNext();
+      const swipedLeft = dx < 0;
+      if (swipedLeft !== isRtl()) cb.onNext();
       else cb.onPrev();
       lastTapTime = 0;
       return;
@@ -135,24 +147,38 @@ export function attachNavigation(
 
       lastTapTime = now;
 
-      if (fraction < side) cb.onPrev();
-      else if (fraction > 1 - side) cb.onNext();
+      if (fraction < side) tapLeft();
+      else if (fraction > 1 - side) tapRight();
       else cb.onCenter();
     }
   };
 
+  // The OS can steal a gesture mid-flight (edge swipe, palm rejection); without
+  // this the long-press timer keeps running and fires a spurious jump.
+  const onPointerCancel = (): void => {
+    tracking = false;
+    cancelLongPress();
+  };
+
   const onKeyDown = (e: KeyboardEvent): void => {
     switch (e.key) {
+      // Arrows are spatial (they swap in RTL); PageUp/PageDown, Space and
+      // Home/End are logical (always reading order / absolute).
       case 'ArrowRight':
+        tapRight();
+        break;
+      case 'ArrowLeft':
+        tapLeft();
+        break;
       case 'PageDown':
         cb.onNext();
         break;
-      case 'ArrowLeft':
       case 'PageUp':
         cb.onPrev();
         break;
       case ' ':
-        cb.onNext();
+        if (e.shiftKey) cb.onPrev();
+        else cb.onNext();
         break;
       case 'Home':
         cb.onLongPrev?.();
@@ -166,12 +192,16 @@ export function attachNavigation(
   el.addEventListener('pointerdown', onPointerDown);
   el.addEventListener('pointermove', onPointerMove);
   el.addEventListener('pointerup', onPointerUp);
+  el.addEventListener('pointercancel', onPointerCancel);
+  el.addEventListener('pointerleave', onPointerCancel);
   window.addEventListener('keydown', onKeyDown);
 
   return () => {
     el.removeEventListener('pointerdown', onPointerDown);
     el.removeEventListener('pointermove', onPointerMove);
     el.removeEventListener('pointerup', onPointerUp);
+    el.removeEventListener('pointercancel', onPointerCancel);
+    el.removeEventListener('pointerleave', onPointerCancel);
     window.removeEventListener('keydown', onKeyDown);
   };
 }

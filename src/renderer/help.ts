@@ -7,6 +7,8 @@
 
 export class HelpOverlay {
   private readonly root: HTMLElement;
+  private leftZoneLabel: HTMLElement | null = null;
+  private rightZoneLabel: HTMLElement | null = null;
 
   /** `onDismiss` is called on tap; the actual hide is driven externally so a tap
    *  on either screen can close the help on both. */
@@ -34,14 +36,29 @@ export class HelpOverlay {
   private buildZones(): HTMLElement {
     const row = document.createElement('div');
     row.className = 'help-zones';
+    const left = this.zone('help-prev', '‹', 'Previous');
+    const right = this.zone('help-next', '›', 'Next');
+    this.leftZoneLabel = left.querySelector('.help-label');
+    this.rightZoneLabel = right.querySelector('.help-label');
     row.append(
       this.zone('help-edge', '⟂', 'Hold'),
-      this.zone('help-prev', '‹', 'Previous'),
+      left,
       this.zone('help-center', '☰', 'Tap for menu'),
-      this.zone('help-next', '›', 'Next'),
+      right,
       this.zone('help-edge', '⟂', 'Hold'),
     );
     return row;
+  }
+
+  /** The tap edges swap in RTL mode; keep the diagram truthful. */
+  setDirection(direction: 'ltr' | 'rtl'): void {
+    if (!this.leftZoneLabel || !this.rightZoneLabel) return;
+    this.leftZoneLabel.textContent = direction === 'rtl' ? 'Next' : 'Previous';
+    this.rightZoneLabel.textContent = direction === 'rtl' ? 'Previous' : 'Next';
+  }
+
+  isVisible(): boolean {
+    return !this.root.classList.contains('hidden');
   }
 
   private buildHints(): HTMLElement {
@@ -51,7 +68,7 @@ export class HelpOverlay {
     const tips = document.createElement('div');
     tips.innerHTML =
       '<p>Swipe left/right to turn pages · Arrow keys or PageUp/PageDown also work</p>' +
-      '<p>Tap the centre for controls · Esc toggles full-screen · Tap anywhere to close</p>';
+      '<p>Tap the centre to show/hide controls · F or F11 toggles full-screen · Tap anywhere to close</p>';
 
     const donate = document.createElement('div');
     donate.className = 'help-donate';

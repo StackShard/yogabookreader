@@ -27,6 +27,22 @@ function naturalCompare(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 }
 
+/** Image entries of an archive in reading order (natural sort by full path). */
+export function orderImageEntries(entryNames: string[]): string[] {
+  return entryNames.filter(isImageEntry).sort(naturalCompare);
+}
+
+/**
+ * On-disk name for an extracted page. The index prefix guarantees uniqueness —
+ * entries in different sub-folders can share a basename (ch1/01.jpg, ch2/01.jpg),
+ * which used to overwrite pages — and makes the extracted dir's natural-sort
+ * order exactly the archive's reading order.
+ */
+export function pageFileName(index: number, entryName: string): string {
+  const base = entryName.split(/[\\/]/).pop() ?? entryName;
+  return `${String(index).padStart(5, '0')}_${base}`;
+}
+
 /** Stable short hash of a file path (used for temp dirs and thumbnail names). */
 export function hashPath(filePath: string): string {
   return createHash('sha1').update(filePath).digest('hex').slice(0, 16);
@@ -48,10 +64,12 @@ export async function cleanupAllTemp(): Promise<void> {
 
 async function extractZip(filePath: string, dir: string): Promise<void> {
   const zip = new AdmZip(filePath);
-  for (const entry of zip.getEntries()) {
-    if (entry.isDirectory || !isImageEntry(entry.entryName)) continue;
-    const out = path.join(dir, path.basename(entry.entryName));
-    await fs.writeFile(out, entry.getData());
+  const entries = new Map(
+    zip.getEntries().filter((e) => !e.isDirectory).map((e) => [e.entryName, e]),
+  );
+  const ordered = orderImageEntries([...entries.keys()]);
+  for (const [i, name] of ordered.entries()) {
+    await fs.writeFile(path.join(dir, pageFileName(i, name)), entries.get(name)!.getData());
   }
 }
 
@@ -60,11 +78,13 @@ async function extractRar(filePath: string, dir: string): Promise<void> {
   const extractor = await createExtractorFromData({
     data: data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
   });
-  const extracted = extractor.extract();
-  for (const file of extracted.files) {
-    if (!file.extraction || !isImageEntry(file.fileHeader.name)) continue;
-    const out = path.join(dir, path.basename(file.fileHeader.name));
-    await fs.writeFile(out, file.extraction);
+  const files = new Map<string, Uint8Array>();
+  for (const file of extractor.extract().files) {
+    if (file.extraction) files.set(file.fileHeader.name, file.extraction);
+  }
+  const ordered = orderImageEntries([...files.keys()]);
+  for (const [i, name] of ordered.entries()) {
+    await fs.writeFile(path.join(dir, pageFileName(i, name)), files.get(name)!);
   }
 }
 
@@ -105,13 +125,13 @@ export async function extractFirstImage(
 
   if (kind === 'cbz') {
     const zip = new AdmZip(filePath);
-    const first = zip
-      .getEntries()
-      .filter((e) => !e.isDirectory && isImageEntry(e.entryName))
-      .sort((a, b) => naturalCompare(a.entryName, b.entryName))[0];
-    if (!first) return null;
-    const out = path.join(dir, path.basename(first.entryName));
-    await fs.writeFile(out, first.getData());
+    const entries = new Map(
+      zip.getEntries().filter((e) => !e.isDirectory).map((e) => [e.entryName, e]),
+    );
+    const firstName = orderImageEntries([...entries.keys()])[0];
+    if (!firstName) return null;
+    const out = path.join(dir, pageFileName(0, firstName));
+    await fs.writeFile(out, entries.get(firstName)!.getData());
     return out;
   }
 
@@ -120,14 +140,14 @@ export async function extractFirstImage(
   const extractor = await createExtractorFromData({
     data: data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
   });
-  const firstName = [...extractor.getFileList().fileHeaders]
-    .filter((h) => !h.flags.directory && isImageEntry(h.name))
-    .map((h) => h.name)
-    .sort(naturalCompare)[0];
+  const names = [...extractor.getFileList().fileHeaders]
+    .filter((h) => !h.flags.directory)
+    .map((h) => h.name);
+  const firstName = orderImageEntries(names)[0];
   if (!firstName) return null;
   const file = [...extractor.extract({ files: [firstName] }).files][0];
   if (!file || !file.extraction) return null;
-  const out = path.join(dir, path.basename(firstName));
+  const out = path.join(dir, pageFileName(0, firstName));
   await fs.writeFile(out, file.extraction);
   return out;
 }
