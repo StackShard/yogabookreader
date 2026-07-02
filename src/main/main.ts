@@ -42,8 +42,11 @@ function bootWindows(): void {
 app.whenReady().then(async () => {
   log('app ready, node', process.versions.node, 'electron', process.versions.electron);
   registerFileProtocol();
-  // Remove any temp files left by a previous crash (PRD Further Notes).
-  await cleanupStaleTemp();
+  // Remove any temp files left by a previous crash (PRD Further Notes). Fired
+  // without awaiting so a large leftover temp dir (e.g. after several crashes)
+  // can't delay the window from appearing — cleanupStaleTemp snapshots entries
+  // before deleting, so it can't race a concurrent extraction into a new dir.
+  void cleanupStaleTemp().catch((err) => log('cleanupStaleTemp failed:', (err as Error).message));
 
   controller.registerHandlers();
   bootWindows();

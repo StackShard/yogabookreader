@@ -52,9 +52,25 @@ function workDir(filePath: string): string {
   return path.join(TEMP_ROOT, hashPath(filePath));
 }
 
-/** Remove temp directories left behind by a previous run/crash. */
+/**
+ * Remove temp directories left behind by a previous run/crash. Snapshots the
+ * top-level entries once, then deletes exactly those — not a single whole-tree
+ * `fs.rm` — so a concurrent `extractComic`/`extractFirstImage` call (which
+ * always creates a *new* `workDir`, never one present in this snapshot) can
+ * never race it. This lets the caller fire it without awaiting.
+ */
 export async function cleanupStaleTemp(): Promise<void> {
-  await fs.rm(TEMP_ROOT, { recursive: true, force: true });
+  let entries: string[];
+  try {
+    entries = await fs.readdir(TEMP_ROOT);
+  } catch {
+    return; // nothing to clean
+  }
+  await Promise.all(
+    entries.map((name) =>
+      fs.rm(path.join(TEMP_ROOT, name), { recursive: true, force: true }).catch(() => undefined),
+    ),
+  );
 }
 
 /** Remove the temp root entirely (call on app quit). */

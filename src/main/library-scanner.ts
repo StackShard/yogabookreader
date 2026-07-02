@@ -50,15 +50,19 @@ export async function scanFolder(root: string): Promise<LibraryEntry[]> {
     } catch {
       return; // skip unreadable directories
     }
+    // Walk sub-folders concurrently instead of one at a time; final results
+    // are sorted below, so push order doesn't matter.
+    const subwalks: Promise<void>[] = [];
     for (const dirent of dirents) {
       const full = path.join(dir, dirent.name);
       if (dirent.isDirectory()) {
-        await walk(full);
+        subwalks.push(walk(full));
       } else if (SUPPORTED_EXTENSIONS.includes(path.extname(dirent.name).toLowerCase())) {
         const entry = toEntry(full, root);
         if (entry) results.push(entry);
       }
     }
+    await Promise.all(subwalks);
   }
 
   await walk(root);
