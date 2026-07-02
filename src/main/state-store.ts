@@ -29,21 +29,45 @@ export interface LibraryCache {
   groups: unknown;
 }
 
+interface RawStore {
+  state: unknown;
+  libraryCache: unknown;
+}
+
+// electron-store (via `conf`) re-reads and re-parses the ENTIRE backing file
+// from disk on every single `.get()` call, with no caching of its own. The
+// launch path alone calls into this module 7+ times (settings, file states,
+// recent files, library cache, twice more for the fresh rescan), and on a
+// library with 1000+ tracked files/cached items that file isn't tiny — each
+// of those was a separate synchronous full-file read blocking the main
+// process. Mirror the whole store in memory instead: one real read for the
+// life of the process, updated in place on every write so reads never go
+// stale. Safe because this app enforces a single instance and is the sole
+// writer of its own state file.
+let cache: RawStore | null = null;
+
+function raw(): RawStore {
+  if (!cache) cache = store.store as RawStore;
+  return cache;
+}
+
 export function getLibraryCache(): LibraryCache | null {
-  const raw = store.get('libraryCache');
-  if (raw && typeof raw === 'object' && typeof (raw as LibraryCache).rootFolder === 'string') {
-    return raw as LibraryCache;
+  const v = raw().libraryCache;
+  if (v && typeof v === 'object' && typeof (v as LibraryCache).rootFolder === 'string') {
+    return v as LibraryCache;
   }
   return null;
 }
 
 export function setLibraryCache(rootFolder: string, groups: unknown): void {
-  store.set('libraryCache', { rootFolder, groups });
+  const libraryCache = { rootFolder, groups };
+  store.set('libraryCache', libraryCache);
+  cache = { ...raw(), libraryCache };
 }
 
 function load(): PersistedState {
   try {
-    return deserialize(store.get('state'));
+    return deserialize(raw().state);
   } catch {
     return emptyState();
   }
@@ -51,6 +75,7 @@ function load(): PersistedState {
 
 function save(state: PersistedState): void {
   store.set('state', state);
+  cache = { ...raw(), state };
 }
 
 export function getSettings(): AppSettings {
