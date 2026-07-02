@@ -6,6 +6,18 @@ directories:
 files:
   - out/**/*
   - package.json
+# Register as an openable handler (Open with… / double-click after choosing).
+# role Viewer: offered for these types without stealing the system default.
+fileAssociations:
+  - ext: pdf
+    name: PDF Document
+    role: Viewer
+  - ext: cbz
+    name: Comic Book Archive (ZIP)
+    role: Viewer
+  - ext: cbr
+    name: Comic Book Archive (RAR)
+    role: Viewer
 win:
   publish: null
   icon: build/icon.ico
