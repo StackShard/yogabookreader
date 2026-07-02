@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   assignDisplays,
+  isLandscape,
   isReadingDisplay,
+  isSingleLandscape,
   READING_WIDTH,
   READING_HEIGHT,
   type DisplayInfo,
@@ -72,5 +74,24 @@ describe('assignDisplays — single-page fallbacks', () => {
 describe('assignDisplays — degenerate', () => {
   it('no displays → ambiguous', () => {
     expect(assignDisplays([]).mode).toBe('ambiguous');
+  });
+});
+
+describe('isLandscape / isSingleLandscape (two-up gating)', () => {
+  it('isLandscape is true only for wider-than-tall displays', () => {
+    expect(isLandscape(landscape(1, 0))).toBe(true);
+    expect(isLandscape(portrait(1, 0))).toBe(false);
+  });
+
+  it('single landscape display → isSingleLandscape true', () => {
+    expect(isSingleLandscape(assignDisplays([landscape(1, 0)]))).toBe(true);
+  });
+
+  it('single portrait display → isSingleLandscape false (two-up would be unreadable)', () => {
+    expect(isSingleLandscape(assignDisplays([portrait(1, 0)]))).toBe(false);
+  });
+
+  it('dual portrait book posture → isSingleLandscape false', () => {
+    expect(isSingleLandscape(assignDisplays([portrait(1, 0), portrait(2, 1800)]))).toBe(false);
   });
 });

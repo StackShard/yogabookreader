@@ -18,9 +18,12 @@
   </head>
   <body>
     <!-- One screen of the two-page spread. The stage captures touch zones; the
-         canvas paints the page; the overlay (right window only) is injected by JS. -->
+         canvas paints the page; the overlay (right window only) is injected by JS.
+         In landscape two-up mode the stage gets the `twoup` class and both
+         canvases show side by side (left page | right page) in this one window. -->
     <div id="stage" class="stage">
       <canvas id="page" class="page"></canvas>
+      <canvas id="page-right" class="page page-secondary" hidden></canvas>
     </div>
     <!-- Loading spinner shown until the first page paints. -->
     <div id="loading" class="loading">

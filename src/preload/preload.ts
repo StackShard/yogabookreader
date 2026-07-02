@@ -62,6 +62,8 @@ const bridge: ReaderBridge = {
   toggleFullScreen: () => ipcRenderer.send(RendererToMain.toggleFullScreen),
   setAdaptiveBrightnessDisabled: (disabled: boolean) =>
     ipcRenderer.send(RendererToMain.setAdaptiveBrightnessDisabled, disabled),
+  setLandscapeTwoUp: (enabled: boolean) =>
+    ipcRenderer.send(RendererToMain.setLandscapeTwoUp, enabled),
   requestHelp: () => ipcRenderer.send(RendererToMain.requestHelp),
   dismissHelp: () => ipcRenderer.send(RendererToMain.dismissHelp),
   quit: () => ipcRenderer.send(RendererToMain.quit),

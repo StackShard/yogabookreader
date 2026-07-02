@@ -37,9 +37,11 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: Yoga Book Reader ${{ github.event.inputs.tag || github.ref_name }}
           body: |
-            ## Changes in v1.1.9
+            ## Changes in v1.2.0
 
-            Portable launch feedback.
+            ### Reading
+            - **Two-page spread on a single landscape screen.** A single wide display now shows two pages side by side in one window — an open-book spread, like the dual-screen experience — instead of one page at a time. On by default, using the same pairing/cover/centerfold/RTL rules as dual-screen mode.
+            - **Toggle** it with **▦ Two-up** in the ⚙ Settings strip (shown only on a single landscape screen). Rotating between portrait and landscape switches modes automatically. A single portrait screen still shows one page at a time.
 
             ### Launch
             - **Portable build shows a "Loading…" splash while it extracts.** The portable `.exe` unpacks itself (and Defender scans it) before the app can start — previously a blank, frozen-looking gap of up to ~20s on slow disks. It now shows a branded splash during that unpack so it's clearly launching.

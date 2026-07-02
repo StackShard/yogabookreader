@@ -76,6 +76,11 @@ export function normalizeSettings(raw: unknown): AppSettings {
     helpShown: raw.helpShown === true,
     animationsEnabled: raw.animationsEnabled === true,
     windowedMode: raw.windowedMode === true,
+    // Defaults to true (auto two-up on a single landscape screen) when unset.
+    landscapeTwoUp:
+      typeof raw.landscapeTwoUp === 'boolean'
+        ? raw.landscapeTwoUp
+        : DEFAULT_SETTINGS.landscapeTwoUp,
   };
 }
 

@@ -33,6 +33,27 @@ describe('buildSpreads — single display mode (folded device)', () => {
   });
 });
 
+describe('buildSpreads — single-twoup mode (one landscape screen)', () => {
+  it('produces the exact same paired layout as dual (differs only in window count)', () => {
+    for (const dir of ['ltr', 'rtl'] as const) {
+      expect(buildSpreads(doc(5, dir), 'single-twoup')).toEqual(
+        buildSpreads(doc(5, dir), 'dual'),
+      );
+    }
+  });
+
+  it('honors centerfolds and spread-encoding like dual, not the single fallback', () => {
+    const aspects: AspectClass[] = ['single', 'double-spread', 'single', 'single'];
+    expect(buildSpreads(doc(4, 'ltr', { aspects }), 'single-twoup')).toEqual(
+      buildSpreads(doc(4, 'ltr', { aspects }), 'dual'),
+    );
+    // ...and is NOT the one-page-per-spread single layout.
+    expect(buildSpreads(doc(4, 'ltr', { aspects }), 'single-twoup')).not.toEqual(
+      buildSpreads(doc(4, 'ltr', { aspects }), 'single'),
+    );
+  });
+});
+
 describe('buildSpreads — LTR cover-first pairing', () => {
   it('puts the cover alone on the right, then pairs lower-left/higher-right', () => {
     const spreads = buildSpreads(doc(5, 'ltr'), 'dual');
