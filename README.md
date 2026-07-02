@@ -307,7 +307,7 @@ You only need to re-run `npm run package` after pulling new changes.
 
 ## Status
 
-The pure-logic core is complete and unit-tested (70 tests). The Electron
+The pure-logic core is complete and unit-tested (90 tests). The Electron
 rendering/window layer is implemented and type-checks/builds, but is best verified
 on actual dual-screen hardware (two portrait Windows displays), which the CI
 environment cannot provide.

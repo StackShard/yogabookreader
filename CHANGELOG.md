@@ -2,7 +2,7 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
-## [Unreleased]
+## [1.1.7] — 2026-07-02
 
 ### Performance
 - **Launch no longer blocks on temp cleanup** — a large leftover comic-
