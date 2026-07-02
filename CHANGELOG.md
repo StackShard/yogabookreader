@@ -2,7 +2,11 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
-## [Unreleased]
+## [1.1.6] — 2026-07-02
+
+> First stable release since v1.1.3 — supersedes the v1.1.4-beta and
+> v1.1.5-beta pre-releases (page save/print, print scaling) with no
+> functional changes to that work, plus the quality-of-life pass below.
 
 ### Reading
 - **RTL (manga) mode now swaps the directional controls** — edge taps, held

@@ -37,17 +37,31 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: Yoga Book Reader ${{ github.event.inputs.tag || github.ref_name }}
           body: |
-            ## Changes in v1.1.5-beta
+            ## Changes in v1.1.6
 
-            > Beta / pre-release.
+            First stable release since v1.1.3 — supersedes the v1.1.4-beta and v1.1.5-beta pre-releases (page save/print, print scaling) with no functional changes to that work, plus a full quality-of-life pass:
 
-            ### Fixes
-            - **Print scaling** — a printed page now fills the sheet (aspect preserved, small margin) instead of printing as a small graphic in the middle, and wide pages print in landscape. Print preview is still unavailable (an Electron limitation of the system print path).
+            ### Reading
+            - **RTL (manga) mode now swaps the directional controls** — edge taps, held edges, swipes and arrow keys follow the right-to-left reading direction, so the left edge turns to the next page.
+            - **Double-tap zoom cycling works on the left screen too.**
+            - **Comics with duplicate page names across sub-folders** no longer lose pages.
+            - A page that repeatedly fails to load now shows a clear notice instead of retrying forever.
+            - Gestures interrupted by Windows no longer trigger a stray jump to the first/last page.
 
-            ### Recent (from v1.1.4-beta)
-            - **Save or print a page** — hold the centre "Tap for menu" area of either screen for a **Save page** / **Print page** menu. Save uses a collision-free name (`<Title> - p<N>.<ext>` in Pictures); comics save the original image, PDF pages save as a high-res PNG.
-            - **Jump Page dial pad** sits lower on screen and its number display no longer jumps when you type the first digit.
-            - **Splash**: the Quit button is now the leftmost action, matching the reader bar.
+            ### App & Library
+            - **Launching the app while it's already running now focuses the running window** (and opens the file passed on the command line) instead of closing silently. The installer registers the app as an "Open with" handler for PDF/CBZ/CBR.
+            - **Opening feedback** — the library shows "Opening…" immediately while a large comic extracts.
+            - Cover regeneration and generation no longer get stuck or duplicate work.
+
+            ### Controls & Polish
+            - **Escape closes the topmost layer first**, then toggles full-screen. **F / F11** toggle full-screen as documented; **Shift+Space** pages backwards.
+            - **Tapping the centre now toggles the control bar.**
+            - The Jump Page dial pad shows the page range and visibly clamps input beyond the last page.
+            - Failed page saves report the failure; file-open errors gained a **Back to library** button.
+
+            ### Performance
+            - Page turns write reading progress to disk once instead of twice.
+            - Dragging the brightness slider no longer spawns a process per tick.
           draft: false
           # Tags containing "beta" (e.g. v1.1.4-beta) publish as pre-releases.
           prerelease: ${{ contains(github.event.inputs.tag || github.ref_name, 'beta') }}
