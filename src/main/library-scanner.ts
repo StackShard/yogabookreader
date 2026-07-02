@@ -40,8 +40,26 @@ function toEntry(filePath: string, root: string): LibraryEntry | null {
 }
 
 /** Recursively collect supported documents under a root folder. */
-export async function scanFolder(root: string): Promise<LibraryEntry[]> {
+export async function scanFolder(
+  root: string,
+  onProgress?: (current: number, total: number) => void,
+): Promise<LibraryEntry[]> {
   const results: LibraryEntry[] = [];
+
+  // Quick counting pass so we can report determinate progress during the real
+  // walk. This is one extra readdir per directory but avoids showing an
+  // indeterminate bar for a large library.
+  let totalFiles = 0;
+  async function count(dir: string): Promise<void> {
+    let dirents;
+    try { dirents = await fs.readdir(dir, { withFileTypes: true }); } catch { return; }
+    const subcounts: Promise<void>[] = [];
+    for (const d of dirents) {
+      if (d.isDirectory()) { subcounts.push(count(path.join(dir, d.name))); }
+      else if (SUPPORTED_EXTENSIONS.includes(path.extname(d.name).toLowerCase())) { totalFiles++; }
+    }
+    await Promise.all(subcounts);
+  }
 
   async function walk(dir: string): Promise<void> {
     let dirents;
@@ -59,12 +77,19 @@ export async function scanFolder(root: string): Promise<LibraryEntry[]> {
         subwalks.push(walk(full));
       } else if (SUPPORTED_EXTENSIONS.includes(path.extname(dirent.name).toLowerCase())) {
         const entry = toEntry(full, root);
-        if (entry) results.push(entry);
+        if (entry) {
+          results.push(entry);
+          if (onProgress) onProgress(results.length, totalFiles);
+        }
       }
     }
     await Promise.all(subwalks);
   }
 
+  if (onProgress) {
+    await count(root);
+    onProgress(0, totalFiles);
+  }
   await walk(root);
   results.sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { numeric: true }));
   return results;

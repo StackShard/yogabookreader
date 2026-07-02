@@ -58,6 +58,7 @@ export async function analyzeFile(
   settings: AppSettings,
   fileState: PerFileState | undefined,
   displayMode: DisplayMode,
+  onExtractProgress?: (current: number, total: number) => void,
 ): Promise<OpenResult> {
   const type = detectType(filePath);
   if (!type) {
@@ -82,7 +83,7 @@ export async function analyzeFile(
   if (type === 'pdf') {
     totalPages = await loadPdfPageCount(filePath);
   } else {
-    imagePaths = await loadComicImages(filePath, type);
+    imagePaths = await loadComicImages(filePath, type, onExtractProgress);
     totalPages = imagePaths.length;
   }
 
@@ -124,12 +125,13 @@ export async function refineClassification(
   type: DocumentType,
   imagePaths: string[] | undefined,
   override: boolean | undefined,
+  onProgress?: (current: number, total: number) => void,
 ): Promise<RefineResult | null> {
   try {
     const result =
       type === 'pdf'
-        ? await classifyPdf(filePath, override)
-        : await classifyComicImages(imagePaths ?? [], override);
+        ? await classifyPdf(filePath, override, onProgress)
+        : await classifyComicImages(imagePaths ?? [], override, onProgress);
     return { isSpreadEncoded: result.isSpreadEncoded, pageAspects: result.pageAspects };
   } catch (err) {
     logError('background classify failed:', (err as Error).message);

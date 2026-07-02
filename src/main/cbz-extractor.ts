@@ -78,18 +78,29 @@ export async function cleanupAllTemp(): Promise<void> {
   await fs.rm(TEMP_ROOT, { recursive: true, force: true });
 }
 
-async function extractZip(filePath: string, dir: string): Promise<void> {
+async function extractZip(
+  filePath: string,
+  dir: string,
+  onProgress?: (current: number, total: number) => void,
+): Promise<void> {
   const zip = new AdmZip(filePath);
   const entries = new Map(
     zip.getEntries().filter((e) => !e.isDirectory).map((e) => [e.entryName, e]),
   );
   const ordered = orderImageEntries([...entries.keys()]);
+  const total = ordered.length;
+  if (onProgress) onProgress(0, total);
   for (const [i, name] of ordered.entries()) {
     await fs.writeFile(path.join(dir, pageFileName(i, name)), entries.get(name)!.getData());
+    if (onProgress) onProgress(i + 1, total);
   }
 }
 
-async function extractRar(filePath: string, dir: string): Promise<void> {
+async function extractRar(
+  filePath: string,
+  dir: string,
+  onProgress?: (current: number, total: number) => void,
+): Promise<void> {
   const data = await fs.readFile(filePath);
   const extractor = await createExtractorFromData({
     data: data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
@@ -99,8 +110,11 @@ async function extractRar(filePath: string, dir: string): Promise<void> {
     if (file.extraction) files.set(file.fileHeader.name, file.extraction);
   }
   const ordered = orderImageEntries([...files.keys()]);
+  const total = ordered.length;
+  if (onProgress) onProgress(0, total);
   for (const [i, name] of ordered.entries()) {
     await fs.writeFile(path.join(dir, pageFileName(i, name)), files.get(name)!);
+    if (onProgress) onProgress(i + 1, total);
   }
 }
 
@@ -111,14 +125,15 @@ async function extractRar(filePath: string, dir: string): Promise<void> {
 export async function extractComic(
   filePath: string,
   kind: 'cbz' | 'cbr',
+  onProgress?: (current: number, total: number) => void,
 ): Promise<string[]> {
   const dir = workDir(filePath);
   await fs.mkdir(dir, { recursive: true });
 
   if (kind === 'cbz') {
-    await extractZip(filePath, dir);
+    await extractZip(filePath, dir, onProgress);
   } else {
-    await extractRar(filePath, dir);
+    await extractRar(filePath, dir, onProgress);
   }
 
   const entries = await fs.readdir(dir);

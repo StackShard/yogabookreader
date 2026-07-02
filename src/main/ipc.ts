@@ -23,6 +23,7 @@ import {
   type LayoutInfo,
   type LibraryGroup,
   type LibraryItemView,
+  type ProgressPayload,
   type ReaderError,
   type RecentFileView,
   type ResumeInfo,
@@ -267,7 +268,9 @@ export class ReaderController {
   private async getLibrary(): Promise<LibraryGroup[]> {
     const root = getSettings().rootFolder;
     if (!root) return [];
-    const entries = await scanFolder(root);
+    const entries = await scanFolder(root, (current, total) =>
+      this.broadcastProgress(current, total, 'Scanning folder…', 'scan'),
+    );
     const fileStates = getFileStates();
     const groups = new Map<string, LibraryItemView[]>();
     for (const e of entries) {
@@ -548,7 +551,13 @@ export class ReaderController {
     const displayMode = currentPlacement().mode === 'dual' ? 'dual' : 'single';
 
     try {
-      const result = await analyzeFile(filePath, settings, fileState, displayMode);
+      const result = await analyzeFile(
+        filePath,
+        settings,
+        fileState,
+        displayMode,
+        (current, total) => this.broadcastProgress(current, total, 'Extracting…', 'extract'),
+      );
       this.session = result.session;
       this.pendingError = null;
       recordRecentFile({
@@ -582,17 +591,36 @@ export class ReaderController {
     imagePaths: string[] | undefined,
     override: boolean | undefined,
   ): Promise<void> {
-    const result = await refineClassification(filePath, type, imagePaths, override);
+    const result = await refineClassification(
+      filePath,
+      type,
+      imagePaths,
+      override,
+      (current, total) =>
+        this.broadcastProgress(current, total, 'Analyzing pages…', 'classify'),
+    );
     if (result && token === this.openToken && this.session) {
       this.session.setSpreadEncoded(result.isSpreadEncoded, result.pageAspects);
       this.broadcastRender();
     }
-    if (token === this.openToken) this.broadcastStatus(null);
+    if (token === this.openToken) {
+      this.broadcastStatus(null);
+      // Dismiss the progress bar: current >= total hides it.
+      const n = result?.pageAspects.length ?? 0;
+      this.broadcastProgress(n, n);
+    }
   }
 
   private broadcastStatus(message: string | null): void {
     for (const { window } of this.windows) {
       if (!window.isDestroyed()) window.webContents.send(MainToRenderer.status, message);
+    }
+  }
+
+  private broadcastProgress(current: number, total: number, message?: string, operation?: string): void {
+    const payload: ProgressPayload = { current, total, message, operation };
+    for (const { window } of this.windows) {
+      if (!window.isDestroyed()) window.webContents.send(MainToRenderer.progress, payload);
     }
   }
 
@@ -620,12 +648,21 @@ export class ReaderController {
       info.type,
       this.session.imagePaths,
       value,
+      (current, total) =>
+        this.broadcastProgress(current, total, 'Reclassifying pages…', 'classify'),
     );
     if (result && token === this.openToken && this.session) {
       this.session.setSpreadEncoded(result.isSpreadEncoded, result.pageAspects);
       this.persistAndRender();
     }
-    if (token === this.openToken) this.broadcastStatus(null);
+    if (token === this.openToken) {
+      this.broadcastStatus(null);
+      this.broadcastProgress(
+        // Dismiss the progress bar (current >= total hides it)
+        result ? result.pageAspects.length : 0,
+        result ? result.pageAspects.length : 1,
+      );
+    }
   }
 
   /** Phase-nudge the spread pairing from the current page (toggles at that page). */

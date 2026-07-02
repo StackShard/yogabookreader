@@ -10,6 +10,7 @@ import {
   RendererToMain,
   type DocumentInfo,
   type InitPayload,
+  type ProgressPayload,
   type ReaderBridge,
   type ReaderError,
   type RecentFileView,
@@ -35,6 +36,8 @@ const bridge: ReaderBridge = {
     ipcRenderer.on(MainToRenderer.setDim, (_e, level: number | null) => cb(level)),
   onStatus: (cb: (message: string | null) => void) =>
     ipcRenderer.on(MainToRenderer.status, (_e, message: string | null) => cb(message)),
+  onProgress: (cb: (progress: ProgressPayload) => void) =>
+    ipcRenderer.on(MainToRenderer.progress, (_e, payload: ProgressPayload) => cb(payload)),
 
   ready: () => ipcRenderer.send(RendererToMain.ready),
   openFile: (filePath: string) => ipcRenderer.send(RendererToMain.openFile, filePath),

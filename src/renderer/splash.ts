@@ -14,7 +14,7 @@ import {
   libraryFilePaths,
 } from './library.js';
 import { onCoverProgress, primeCoverCache } from './cover.js';
-import { setStatus } from './toast.js';
+import { setProgress, setStatus } from './toast.js';
 
 function readRole(): WindowRole {
   const role = new URLSearchParams(location.search).get('role');
@@ -84,6 +84,12 @@ async function mainForPrimaryView(reader: ReaderBridge, hideLoading: () => void)
 
   // Main-process progress ("Opening…" while a large comic extracts, etc.).
   reader.onStatus((message) => setStatus(message));
+  // Determinate progress bar for main-process operations (library scan, comic
+  // extraction, PDF page classification). Uses the same setProgress component
+  // that renders the thin bar below the status pill.
+  reader.onProgress(({ current, total, message }) =>
+    setProgress(current, total, message),
+  );
 
   // Show cover-generation progress, clearing when everything has rendered.
   onCoverProgress((done, total) => {
@@ -205,13 +211,12 @@ async function mainForPrimaryView(reader: ReaderBridge, hideLoading: () => void)
   if (cached.length > 0) {
     await primeCoverCache(libraryFilePaths(cached));
     refreshLibrary();
+    // Recent + the cached library are on screen — hide the spinner and let
+    // the background rescan update silently if the data changes.
+    hideLoading();
   } else {
     setStatus('Scanning folder…');
   }
-  // Recent + the cached library (if any) are now on screen — the initial
-  // paint gap is over. The fresh rescan below stays a silent background
-  // refresh (only re-renders on diff), so it shouldn't hold up the spinner.
-  hideLoading();
   const fresh = await reader.getLibrary().catch(() => []);
   if (JSON.stringify(fresh) !== JSON.stringify(libraryGroups)) {
     libraryGroups = fresh;
@@ -220,7 +225,12 @@ async function mainForPrimaryView(reader: ReaderBridge, hideLoading: () => void)
     await primeCoverCache(libraryFilePaths(fresh));
     refreshLibrary();
   }
-  if (cached.length === 0) setStatus(null);
+  // If the user had no cached library, the spinner stayed up through the scan.
+  // Hide it now that content is on screen and clear the status.
+  if (cached.length === 0) {
+    setStatus(null);
+    hideLoading();
+  }
 }
 
 void main();

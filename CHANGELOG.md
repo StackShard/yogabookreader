@@ -2,6 +2,34 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
+## [1.1.8] — 2026-07-02
+
+### Launch
+- **Window now appears before any disk I/O** — the splash screen is visible in
+  1–3s instead of blocking on the synchronous `state.json` read (previously
+  20+s with a large library).
+- **pdf.js imported lazily** on the splash page — the 650KB module no longer
+  blocks the first paint; cover generation loads it on demand.
+- **Spinner stays on screen until real content is ready** — no more blank
+  library section during a fresh folder scan.
+
+### Memory
+- **Protocol handler supports HTTP Range requests** (`206 Partial Content`) so
+  pdf.js can stream just the parts of a PDF it needs instead of downloading
+  the entire file into every renderer process.
+- **pdf.js streaming enabled** — both reader windows now load the PDF
+  incrementally via range requests. For a 200MB PDF this reduces per-renderer
+  memory from ~200MB to ~50–80MB.
+- **Main-process PDF metadata no longer buffers the full file** — uses a
+  `file://` URL instead of `Uint8Array`, eliminating a 200+MB allocation.
+
+### Progress
+- **Determinate progress bar** for library scans, comic extraction, and PDF
+  page classification — replaces the old text-only status pill with a thin
+  progress bar showing percentage complete.
+- Progress callbacks threaded through every main-process long operation, with
+  automatic throttle to avoid IPC flood on large inputs.
+
 ## [1.1.7] — 2026-07-02
 
 ### Performance

@@ -61,12 +61,16 @@ async function assertReadable(filePath: string): Promise<void> {
  * (Required before anything can render; the measure/classify step is separate so
  * the document can open before it runs.)
  */
-export async function loadComicImages(filePath: string, kind: 'cbz' | 'cbr'): Promise<string[]> {
+export async function loadComicImages(
+  filePath: string,
+  kind: 'cbz' | 'cbr',
+  onProgress?: (current: number, total: number) => void,
+): Promise<string[]> {
   await assertReadable(filePath);
 
   let imagePaths: string[];
   try {
-    imagePaths = await extractComic(filePath, kind);
+    imagePaths = await extractComic(filePath, kind, onProgress);
   } catch (err) {
     throw new FileLoadError({
       filePath,
@@ -92,12 +96,16 @@ export async function loadComicImages(filePath: string, kind: 'cbz' | 'cbr'): Pr
 export async function classifyComicImages(
   imagePaths: string[],
   override?: boolean,
+  onProgress?: (current: number, total: number) => void,
 ): Promise<ComicClassification> {
   const dims: PageDimensions[] = [];
-  for (const imagePath of imagePaths) {
-    const size = await imageSize(imagePath);
+  const total = imagePaths.length;
+  if (onProgress) onProgress(0, total);
+  for (let i = 0; i < imagePaths.length; i++) {
+    const size = await imageSize(imagePaths[i]);
     // Default to a portrait single page if a format is unrecognized.
     dims.push(size ?? { width: 1000, height: 1600 });
+    if (onProgress) onProgress(i + 1, total);
   }
   return classifyDocument(dims, override);
 }

@@ -19,6 +19,18 @@ export type WindowRole = 'left' | 'right' | 'single';
 
 export type DocumentType = 'pdf' | 'cbz' | 'cbr';
 
+/** A progress update for a long-running operation in the main process. */
+export interface ProgressPayload {
+  /** 0-based count of completed work units. */
+  current: number;
+  /** Total work units (0 = indeterminate, show an indeterminate bar). */
+  total: number;
+  /** Human-readable description of what is happening (e.g. "Scanning folder…"). */
+  message?: string;
+  /** Machine-parseable operation identifier so the UI can correlate updates. */
+  operation?: string;
+}
+
 /** A concrete thing to render on one screen, resolved by the main process. */
 export type RenderTarget =
   | { kind: 'pdf'; filePath: string; pageIndex: number; half?: Side }
@@ -127,6 +139,7 @@ export const MainToRenderer = {
   fullScreenChanged: 'm2r:full-screen-changed',
   setDim: 'm2r:set-dim',
   status: 'm2r:status',
+  progress: 'm2r:progress',
 } as const;
 
 /** Payload of the one-time init message that tells a window its role. */
@@ -146,6 +159,7 @@ export interface ReaderBridge {
   onFullScreenChanged(cb: (isFullScreen: boolean) => void): void;
   onSetDim(cb: (level: number | null) => void): void;
   onStatus(cb: (message: string | null) => void): void;
+  onProgress(cb: (progress: ProgressPayload) => void): void;
 
   ready(): void;
   openFile(filePath: string): void;

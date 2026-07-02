@@ -37,15 +37,23 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: Yoga Book Reader ${{ github.event.inputs.tag || github.ref_name }}
           body: |
-            ## Changes in v1.1.7
+            ## Changes in v1.1.8
 
-            Performance-focused release targeting the 20–25s silent launch delay reported on large libraries:
+            Performance release: launch delay, massive PDF memory reduction, and progress bars.
 
-            ### Performance
-            - **Launch no longer blocks on temp cleanup** — a large leftover comic-extraction temp directory (which only accumulates after a crash or force-quit) could previously delay the very first window paint by many seconds with zero visual feedback. Cleanup now runs without blocking window creation.
-            - **Splash screen shows a loading spinner** during initial data load instead of appearing frozen.
-            - **Library rendering no longer floods the app with cache-check calls** — large libraries now check which covers are already cached in one batched call instead of one call per item.
-            - **State reads no longer re-read the whole settings file from disk** on every call; the app keeps an in-memory copy in sync instead.
+            ### Launch
+            - **Window appears before disk I/O** — splash visible in 1–3s (was 20+s with large libraries).
+            - **pdf.js lazy-loaded** on splash — 650KB module no longer blocks first paint.
+            - **Spinner stays until content is ready** — no blank library during fresh scans.
+
+            ### Memory
+            - **HTTP Range requests** in the protocol handler — pdf.js streams only what it needs.
+            - **Streaming enabled** in renderers — ~75% memory reduction per renderer for large PDFs.
+            - **Main-process PDF parsing uses `file://` URL** — eliminates 200+MB buffer allocation.
+
+            ### Progress
+            - **Determinate progress bar** for library scan, comic extraction, and PDF classification.
+            - Progress callbacks in every long-running main-process operation.
           draft: false
           # Tags containing "beta" (e.g. v1.1.4-beta) publish as pre-releases.
           prerelease: ${{ contains(github.event.inputs.tag || github.ref_name, 'beta') }}

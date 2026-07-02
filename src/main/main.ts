@@ -36,7 +36,19 @@ const controller = new ReaderController();
 controller.setWindowFactory(() => createReaderWindows(getSettings().windowedMode));
 
 function bootWindows(): void {
-  controller.setWindows(createReaderWindows(getSettings().windowedMode));
+  // Create fullscreen windows immediately so the splash screen is visible before
+  // the first synchronous state.json read (which can take several seconds for a
+  // large library with hundreds of files). If the user has persisted windowed
+  // mode, the windows are rebuilt once settings load — a brief flicker, but it
+  // avoids a ~20s blank launch when state.json is large or disk I/O is slow.
+  const windows = createReaderWindows(/* windowed */ false);
+  controller.setWindows(windows);
+  // Settings are now read from the already-cached state if been read before, or
+  // synchronously loaded from disk on first access. Either way, the window is
+  // already on screen.
+  if (getSettings().windowedMode) {
+    controller.setWindows(createReaderWindows(/* windowed */ true));
+  }
 }
 
 app.whenReady().then(async () => {

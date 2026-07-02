@@ -11,7 +11,7 @@ import { ControlOverlay } from './overlay.js';
 import { HelpOverlay } from './help.js';
 import { showError } from './error.js';
 import { showPageMenu } from './page-menu.js';
-import { setStatus, toast } from './toast.js';
+import { setProgress, setStatus, toast } from './toast.js';
 import type { RenderInstruction, RenderTarget, WindowRole } from '../shared/ipc.js';
 import {
   DEFAULT_SETTINGS,
@@ -235,6 +235,9 @@ async function main(): Promise<void> {
   reader.onShowHelp(() => help.show());
   reader.onHideHelp(() => help.hide());
   reader.onStatus((message) => setStatus(message));
+  reader.onProgress(({ current, total, message }) =>
+    setProgress(current, total, message),
+  );
   reader.onFullScreenChanged((_isFs) => { /* full-screen state tracked by main process; Esc key toggles */ });
   reader.onSetDim((level) => {
     dimLayer.style.opacity = level === null ? '0' : String((100 - level) / 100);

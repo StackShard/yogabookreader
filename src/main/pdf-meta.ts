@@ -5,7 +5,6 @@
  * spread-encoded scans. Rendering itself still happens in the renderer.
  */
 
-import { promises as fs } from 'node:fs';
 import { classifyDocument, type PageDimensions } from '../core/aspect.js';
 import type { AspectClass } from '../core/types.js';
 import { FileLoadError } from './file-loader.js';
@@ -33,10 +32,13 @@ export interface PdfMeta {
 }
 
 async function openPdf(filePath: string): Promise<import('pdfjs-dist/legacy/build/pdf.mjs').PDFDocumentProxy> {
-  const data = new Uint8Array(await fs.readFile(filePath));
   const { getDocument } = await loadPdfjs();
+  // Use a file:// URL so pdf.js reads the file directly from disk instead of
+  // loading the entire file into a Uint8Array first (cf. protocol range-request
+  // support, which applies to the renderer path). For the main-process metadata
+  // path this avoids a 200+ MB heap allocation per open.
   try {
-    return await getDocument({ data, isEvalSupported: false }).promise;
+    return await getDocument({ url: `file://${filePath}`, isEvalSupported: false }).promise;
   } catch (err) {
     const name = (err as { name?: string }).name;
     if (name === 'PasswordException') {
@@ -71,15 +73,21 @@ export async function loadPdfPageCount(filePath: string): Promise<number> {
  * Slow: read every page's dimensions and classify the document
  * (centerfold / spread-encoded detection). Run off the open path.
  */
-export async function classifyPdf(filePath: string, override?: boolean): Promise<PdfMeta> {
+export async function classifyPdf(
+  filePath: string,
+  override?: boolean,
+  onProgress?: (current: number, total: number) => void,
+): Promise<PdfMeta> {
   const doc = await openPdf(filePath);
   const dims: PageDimensions[] = [];
   const totalPages = doc.numPages;
+  if (onProgress) onProgress(0, totalPages);
   try {
     for (let i = 1; i <= totalPages; i++) {
       const page = await doc.getPage(i);
       const viewport = page.getViewport({ scale: 1 });
       dims.push({ width: viewport.width, height: viewport.height });
+      if (onProgress) onProgress(i, totalPages);
     }
   } finally {
     // Release the worker/document resources; the renderer parses its own copy.

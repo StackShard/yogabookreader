@@ -58,9 +58,6 @@ function getPdf(filePath: string): Promise<pdfjsLib.PDFDocumentProxy> {
     doc = pdfjsLib.getDocument({
       url: fileUrl(filePath),
       isEvalSupported: false,
-      // Our protocol handler returns the whole file; skip range/stream requests.
-      disableRange: true,
-      disableStream: true,
     }).promise;
     pdfDocs.set(filePath, doc);
   }

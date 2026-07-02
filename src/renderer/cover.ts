@@ -7,10 +7,22 @@
  * the caller falls back to the letter placeholder.
  */
 
-import * as pdfjsLib from 'pdfjs-dist';
-import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+// Lazy-load pdf.js so the splash screen's module graph doesn't pay 2-5s of
+// evaluation time at first paint. Vite/ESM caches dynamic imports globally, so
+// there is no duplicate load — the first call warms the cache, the rest are free.
+let _pdfjsInit: Promise<typeof import('pdfjs-dist')> | null = null;
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+function ensurePdfjs(): Promise<typeof import('pdfjs-dist')> {
+  if (!_pdfjsInit) {
+    _pdfjsInit = (async () => {
+      const m = await import('pdfjs-dist');
+      const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+      m.GlobalWorkerOptions.workerSrc = worker.default;
+      return m;
+    })();
+  }
+  return _pdfjsInit;
+}
 
 const COVER_WIDTH = 320;
 const MAX_CONCURRENT = 3;
@@ -51,6 +63,7 @@ function release(): void {
 }
 
 async function renderPdfCover(url: string): Promise<string | null> {
+  const pdfjsLib = await ensurePdfjs();
   const doc = await pdfjsLib.getDocument({
     url,
     isEvalSupported: false,
