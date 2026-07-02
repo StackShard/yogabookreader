@@ -81,6 +81,18 @@ export function saveFileState(patch: PerFileState): void {
   save(state);
 }
 
+/**
+ * Persist a per-file state patch and its recent-files entry in ONE load/save.
+ * This runs on every page turn; two separate calls would double the synchronous
+ * disk writes (the store targets slow eMMC devices).
+ */
+export function saveFileStateAndRecent(patch: PerFileState, entry: RecentFile): void {
+  const state = load();
+  state.files[patch.filePath] = { ...state.files[patch.filePath], ...patch };
+  state.recentFiles = upsertRecentFile(state.recentFiles, entry);
+  save(state);
+}
+
 export function getRecentFiles(): RecentFile[] {
   return load().recentFiles;
 }

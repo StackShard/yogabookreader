@@ -27,18 +27,47 @@ export interface BrightnessResult {
 }
 
 export class BrightnessController {
+  /** Latest requested level not yet applied (overwritten by newer requests). */
+  private pending: number | null = null;
+  /** The single in-flight apply loop; all coalesced callers share its result. */
+  private worker: Promise<boolean> | null = null;
+
   /**
    * Apply a brightness level: persist, try the real hardware backlight, and
    * report whether the renderers need the dim-overlay fallback.
+   *
+   * Rapid calls (a slider drag fires one per tick) are coalesced: while one
+   * WMI/PowerShell call is in flight only the latest requested level is kept,
+   * so processes don't pile up and the final level always wins.
    */
   async set(level: number): Promise<BrightnessResult> {
     const clamped = Math.max(
       BRIGHTNESS_MIN,
       Math.min(BRIGHTNESS_MAX, Math.round(level)),
     );
-    updateSettings({ brightness: clamped });
-    const ok = await setHardwareBrightness(clamped);
+    const ok = await this.applyCoalesced(clamped);
     return { dimLevel: ok ? null : clamped };
+  }
+
+  private applyCoalesced(level: number): Promise<boolean> {
+    this.pending = level;
+    if (!this.worker) {
+      this.worker = (async () => {
+        let ok = false;
+        try {
+          while (this.pending !== null) {
+            const next = this.pending;
+            this.pending = null;
+            updateSettings({ brightness: next });
+            ok = await setHardwareBrightness(next);
+          }
+        } finally {
+          this.worker = null;
+        }
+        return ok;
+      })();
+    }
+    return this.worker;
   }
 
   /**
