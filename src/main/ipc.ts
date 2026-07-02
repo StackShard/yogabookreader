@@ -38,7 +38,14 @@ import { analyzeFile, refineClassification } from './document-opener.js';
 import { scanFolder, thumbnailCacheDir } from './library-scanner.js';
 import { extractFirstImage, hashPath } from './cbz-extractor.js';
 import { fileUrl as coverUrl } from './protocol.js';
-import { currentPlacement, loadPage, type ReaderPage, type ReaderWindow } from './windows.js';
+import {
+  currentPlacement,
+  effectiveDisplayMode,
+  loadPage,
+  type ReaderPage,
+  type ReaderWindow,
+} from './windows.js';
+import { isSingleLandscape } from '../core/placement.js';
 import { log, logError } from './log.js';
 import {
   clearRecentFiles,
@@ -171,6 +178,11 @@ export class ReaderController {
     ipcMain.on(RendererToMain.setAdaptiveBrightnessDisabled, (_e, disabled: boolean) => {
       void this.setAdaptiveBrightnessDisabled(disabled);
     });
+    ipcMain.on(RendererToMain.setLandscapeTwoUp, (_e, enabled: boolean) => {
+      updateSettings({ landscapeTwoUp: enabled });
+      // Rebuild the window (single ↔ twoup) and rebuild spreads to match.
+      this.relayout();
+    });
     ipcMain.on(RendererToMain.requestHelp, () => this.broadcast(MainToRenderer.showHelp));
     ipcMain.on(RendererToMain.dismissHelp, () => {
       updateSettings({ helpShown: true });
@@ -195,13 +207,15 @@ export class ReaderController {
     return { filePath: info.filePath, displayName: info.displayName };
   }
 
-  /** Single-/dual-screen summary for the splash layout diagnostic. */
+  /** Single-/dual-screen summary for the splash layout diagnostic + two-up toggle. */
   private getLayoutInfo(): LayoutInfo {
     const displays = screen.getAllDisplays();
     return {
       mode: currentPlacement().mode,
       displayCount: displays.length,
       portraitCount: displays.filter((d) => d.bounds.height > d.bounds.width).length,
+      isSingleLandscape: isSingleLandscape(currentPlacement()),
+      landscapeTwoUp: getSettings().landscapeTwoUp,
     };
   }
 
@@ -548,7 +562,7 @@ export class ReaderController {
     const token = ++this.openToken;
     const settings = getSettings();
     const fileState = getFileState(filePath);
-    const displayMode = currentPlacement().mode === 'dual' ? 'dual' : 'single';
+    const displayMode = effectiveDisplayMode();
 
     try {
       const result = await analyzeFile(
@@ -702,15 +716,23 @@ export class ReaderController {
     this.persistAndRender();
   }
 
+  /** The reading mode the current window set represents (roles distinguish the
+   *  two one-window modes: `twoup` = landscape spread, `single` = one page). */
+  private currentDisplayMode(): DisplayMode {
+    if (this.windows.length >= 2) return 'dual';
+    return this.windows[0]?.role === 'twoup' ? 'single-twoup' : 'single';
+  }
+
   /**
-   * Re-evaluate the display layout after a screen change (US#26). When the
-   * topology is unchanged this just refreshes the spread layout (cheap — these
-   * events fire often). When it changes (single↔dual, e.g. rotating into book
-   * posture), the windows are rebuilt so the second screen actually appears.
+   * Re-evaluate the display layout after a screen change (US#26) or a two-up
+   * toggle. When the mode is unchanged this just refreshes the spread layout
+   * (cheap — screen events fire often). When it changes (single↔dual on
+   * rotation into book posture, or single↔single-twoup when a landscape screen
+   * toggles two-up), the windows are rebuilt.
    */
   relayout(): void {
-    const desired: DisplayMode = currentPlacement().mode === 'dual' ? 'dual' : 'single';
-    const current: DisplayMode = this.windows.length >= 2 ? 'dual' : 'single';
+    const desired = effectiveDisplayMode();
+    const current = this.currentDisplayMode();
     if (desired === current) {
       if (this.session) {
         this.session.setDisplayMode(desired);
@@ -718,7 +740,7 @@ export class ReaderController {
       }
       return;
     }
-    log('relayout: topology change', current, '->', desired, '- rebuilding windows');
+    log('relayout: mode change', current, '->', desired, '- rebuilding windows');
     this.rebuildWindows(desired);
   }
 
@@ -792,10 +814,9 @@ export class ReaderController {
     }
   }
 
-  /** Show the control overlay (right window only, PRD §Control Overlay). */
+  /** Show the control overlay (the window that hosts it: right/single/twoup). */
   showOverlay(): void {
-    const overlayWindow =
-      this.windows.find((w) => w.role === 'right') ?? this.windows.find((w) => w.role === 'single');
+    const overlayWindow = this.windows.find((w) => w.role !== 'left');
     overlayWindow?.window.webContents.send(MainToRenderer.showOverlay);
   }
 

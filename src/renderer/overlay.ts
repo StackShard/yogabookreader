@@ -31,7 +31,15 @@ export interface OverlayCallbacks {
   onQuit(): void;
   onSetBrightness(level: number): void;
   onToggleAdaptive(disabled: boolean): void;
+  /** Toggle side-by-side two-up on a single landscape screen. */
+  onToggleTwoUp(enabled: boolean): void;
   onShowHelp(): void;
+}
+
+/** Two-up toggle config: only offered on a single landscape display. */
+export interface TwoUpOptions {
+  showTwoUp: boolean;
+  twoUpEnabled: boolean;
 }
 
 export class ControlOverlay {
@@ -46,6 +54,8 @@ export class ControlOverlay {
   private expanded = false;
   private hovered = false;
   private adaptiveDisabled: boolean;
+  private readonly twoUp: TwoUpOptions;
+  private twoUpButton: HTMLButtonElement | null = null;
   private bookTitle = '';
   private pageLabel = '';
   private dialpadEl: HTMLElement | null = null;
@@ -60,8 +70,10 @@ export class ControlOverlay {
     private readonly cb: OverlayCallbacks,
     private readonly initialBrightness: number,
     initialAdaptiveDisabled: boolean,
+    twoUp: TwoUpOptions = { showTwoUp: false, twoUpEnabled: false },
   ) {
     this.adaptiveDisabled = initialAdaptiveDisabled;
+    this.twoUp = { ...twoUp };
     this.root = document.createElement('div');
     this.root.className = 'overlay hidden';
 
@@ -95,6 +107,13 @@ export class ControlOverlay {
       this.button('⇥ Nudge', this.settingsAction(() => this.cb.onNudgeSpread())),
       this.button('Reset align', this.settingsAction(() => this.cb.onResetSpread())),
     );
+
+    // Two-up toggle: only on a single landscape screen (elsewhere it's either
+    // already two screens or a portrait screen where two-up is unreadable).
+    if (this.twoUp.showTwoUp) {
+      this.twoUpButton = this.button(this.twoUpLabel(), () => this.toggleTwoUp(), 'overlay-btn-twoup');
+      settingsRow.appendChild(this.twoUpButton);
+    }
 
     const settingsWrap = document.createElement('div');
     settingsWrap.className = 'overlay-expanded';
@@ -188,6 +207,17 @@ export class ControlOverlay {
     this.adaptiveDisabled = !this.adaptiveDisabled;
     this.adaptiveButton.textContent = this.adaptiveLabel();
     this.cb.onToggleAdaptive(this.adaptiveDisabled);
+  }
+
+  private twoUpLabel(): string {
+    return this.twoUp.twoUpEnabled ? '▦ Two-up: On' : '▦ Two-up: Off';
+  }
+
+  private toggleTwoUp(): void {
+    this.twoUp.twoUpEnabled = !this.twoUp.twoUpEnabled;
+    if (this.twoUpButton) this.twoUpButton.textContent = this.twoUpLabel();
+    // Main rebuilds the window (single ↔ twoup); this window may be torn down.
+    this.cb.onToggleTwoUp(this.twoUp.twoUpEnabled);
   }
 
   private brightnessControl(): HTMLElement {

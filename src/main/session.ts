@@ -192,29 +192,52 @@ export class ReaderSession {
       case 'right':
         return spread.right;
       case 'single':
+      case 'twoup': // twoup is handled directly in instructionFor (both slots)
         return spread.left ?? spread.right;
     }
   }
 
+  /** Resolve one side of a spread index to a render target (blank past the ends). */
+  private slotAt(index: number, side: 'left' | 'right'): RenderTarget {
+    const spread = this.spreads[index];
+    return spread ? this.resolve(spread[side]) : { kind: 'blank' };
+  }
+
   /** Build the render instruction (current + prefetch) for one window. */
   instructionFor(role: WindowRole): RenderInstruction {
-    const at = (i: number): RenderTarget => {
-      const spread = this.spreads[i];
-      return spread ? this.resolve(this.slotForRole(spread, role)) : { kind: 'blank' };
-    };
     const prefetchIndices = [
       nextSpreadIndex(this.index, this.spreads.length),
       prevSpreadIndex(this.index, this.spreads.length),
     ].filter((i) => i !== this.index);
 
     const currentSpread = this.spreads[this.index];
-    return {
-      current: at(this.index),
-      prefetch: prefetchIndices.map(at),
+    const base = {
       zoomPreset: this.zoomPreset,
       spreadIndex: clampSpreadIndex(this.index, this.spreads.length),
       pages: currentSpread ? pagesInSpread(currentSpread) : [],
       readingDirection: this.model.readingDirection,
+    };
+
+    if (role === 'twoup') {
+      // One landscape window paints the whole spread: physical-left page →
+      // `current`, physical-right page → `secondary`. Warm both pages of the
+      // neighbouring spreads so a turn is instant.
+      return {
+        ...base,
+        current: this.slotAt(this.index, 'left'),
+        secondary: this.slotAt(this.index, 'right'),
+        prefetch: prefetchIndices.flatMap((i) => [this.slotAt(i, 'left'), this.slotAt(i, 'right')]),
+      };
+    }
+
+    const at = (i: number): RenderTarget => {
+      const spread = this.spreads[i];
+      return spread ? this.resolve(this.slotForRole(spread, role)) : { kind: 'blank' };
+    };
+    return {
+      ...base,
+      current: at(this.index),
+      prefetch: prefetchIndices.map(at),
     };
   }
 

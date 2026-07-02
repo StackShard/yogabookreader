@@ -2,6 +2,18 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
+## [1.2.0] — 2026-07-02
+
+### Reading
+- **Two-page spread on a single landscape screen.** A single wide (landscape)
+  display now shows two pages side by side in one window — an open-book spread,
+  just like the dual-screen experience — instead of one page at a time. It's on
+  by default and uses the same pairing, cover, centerfold, and LTR/RTL rules as
+  the dual-screen mode. Toggle it with **▦ Two-up** in the ⚙ Settings strip
+  (shown only on a single landscape screen); rotating between portrait and
+  landscape switches modes automatically. A single **portrait** screen still
+  shows one page at a time (two-up would be too narrow to read).
+
 ## [1.1.8] — 2026-07-02
 
 ### Launch

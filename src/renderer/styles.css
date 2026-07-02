@@ -49,6 +49,20 @@ body {
   display: block;
 }
 
+/* Landscape two-up: one window, two pages side by side. The stage lays the two
+   canvases out as equal halves; the secondary canvas is hidden in every other
+   mode. Each half-canvas still uses the normal centered paint, so a page fills
+   its half exactly like a single screen fills a whole one. */
+.stage.twoup {
+  display: flex;
+}
+.stage.twoup .page {
+  width: 50%;
+}
+.page-secondary {
+  width: 0;
+}
+
 /* Loading spinner shown until the first page paints. */
 .loading {
   position: fixed;

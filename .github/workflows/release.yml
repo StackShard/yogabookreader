@@ -37,23 +37,11 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: Yoga Book Reader ${{ github.event.inputs.tag || github.ref_name }}
           body: |
-            ## Changes in v1.1.8
+            ## Changes in v1.2.0
 
-            Performance release: launch delay, massive PDF memory reduction, and progress bars.
-
-            ### Launch
-            - **Window appears before disk I/O** — splash visible in 1–3s (was 20+s with large libraries).
-            - **pdf.js lazy-loaded** on splash — 650KB module no longer blocks first paint.
-            - **Spinner stays until content is ready** — no blank library during fresh scans.
-
-            ### Memory
-            - **HTTP Range requests** in the protocol handler — pdf.js streams only what it needs.
-            - **Streaming enabled** in renderers — ~75% memory reduction per renderer for large PDFs.
-            - **Main-process PDF parsing uses `file://` URL** — eliminates 200+MB buffer allocation.
-
-            ### Progress
-            - **Determinate progress bar** for library scan, comic extraction, and PDF classification.
-            - Progress callbacks in every long-running main-process operation.
+            ### Reading
+            - **Two-page spread on a single landscape screen.** A single wide display now shows two pages side by side in one window — an open-book spread, like the dual-screen experience — instead of one page at a time. On by default, using the same pairing/cover/centerfold/RTL rules as dual-screen mode.
+            - **Toggle** it with **▦ Two-up** in the ⚙ Settings strip (shown only on a single landscape screen). Rotating between portrait and landscape switches modes automatically. A single portrait screen still shows one page at a time.
           draft: false
           # Tags containing "beta" (e.g. v1.1.4-beta) publish as pre-releases.
           prerelease: ${{ contains(github.event.inputs.tag || github.ref_name, 'beta') }}

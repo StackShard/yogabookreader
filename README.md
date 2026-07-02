@@ -28,8 +28,10 @@ If your device meets these two requirements, yes:
 
 - **Windows** — the app is a native Windows executable
 - **Two portrait screens side by side** — the app detects portrait orientation and
-  side-by-side positioning automatically. Only one screen? It falls back to
-  single-page mode. Landscape? Rotate to portrait in Display Settings.
+  side-by-side positioning automatically. Only one screen? It still works:
+  a single **portrait** screen shows one page at a time, and a single **landscape**
+  screen shows a **two-page spread side by side** (an open book in one window) —
+  which you can toggle off for single-page reading.
 
 That's it. No specific brand, model, or resolution required.
 
@@ -89,8 +91,10 @@ Get-FileHash .\YogaBookReader-*-portable.exe -Algorithm SHA256
      so the left edge turns to the next page.
 5. **Use the controls** — The overlay bar has quit, help, settings, library,
    brightness and auto-brightness controls. Tap **⚙ Settings** to open the
-   settings strip (zoom presets, reading direction, **Jump Page**, and spread
-   **Nudge** / **Reset align**); it auto-collapses after making a selection.
+   settings strip (zoom presets, reading direction, **Jump Page**, spread
+   **Nudge** / **Reset align**, and — on a single landscape screen — a
+   **▦ Two-up** toggle for side-by-side vs. single-page); it auto-collapses
+   after making a selection.
 6. **Fix a misaligned scan** — If a skipped or mis-scanned page throws off the
    two-page pairing, tap **⇥ Nudge** to push the current page onto its own
    spread and re-align everything after it (your place is kept). **Reset align**
@@ -159,9 +163,12 @@ and reading progress are preserved across updates.
 <details>
 <summary><strong>Can I use this on a regular single-screen laptop?</strong></summary>
 
-Yes — the app falls back to single-page mode automatically. You'll see one page at a
-time instead of a two-page spread. It works fine, but the dual-screen experience is
-where it really shines.
+Yes. On a **landscape** screen (a normal laptop or monitor) the app shows a
+**two-page spread side by side** in a single window — like holding an open book —
+automatically. Prefer one page at a time? Tap **⚙ Settings** and toggle
+**▦ Two-up** off. On a single **portrait** screen it shows one page at a time
+(two pages side by side would be too narrow to read). The dual-screen setup is
+still where it shines, but a single landscape screen gets the spread too.
 </details>
 
 <details>
@@ -185,7 +192,9 @@ Built with **Electron + TypeScript**.
 
 - **Dual-screen spreads** — two portrait displays treated as a single open-book
   reading surface, with proper centerfold handling, LTR/RTL support, and
-  single-display fallback.
+  single-display fallback. A single **landscape** display shows the spread
+  side-by-side in one window (auto, toggleable); a single portrait display shows
+  one page.
 - **Spread alignment nudge** — fix a skipped/mis-scanned page that throws off
   pairing: force the current page onto its own spread to re-align everything
   after it, non-destructively and saved per document.

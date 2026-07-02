@@ -9,8 +9,10 @@
 
 import path from 'node:path';
 import { BrowserWindow, screen } from 'electron';
-import { assignDisplays, type DisplayInfo, type Placement } from '../core/placement.js';
+import { assignDisplays, isSingleLandscape, type DisplayInfo, type Placement } from '../core/placement.js';
+import type { DisplayMode } from '../core/types.js';
 import type { WindowRole } from '../shared/ipc.js';
+import { getSettings } from './state-store.js';
 import { log } from './log.js';
 
 export interface ReaderWindow {
@@ -48,6 +50,20 @@ export function loadPage(win: BrowserWindow, role: WindowRole, page: ReaderPage)
 
 export function currentPlacement(): Placement {
   return assignDisplays(screen.getAllDisplays().map(toDisplayInfo));
+}
+
+/**
+ * The effective reading mode for the current displays + user settings:
+ * - `dual` — two portrait screens in book posture.
+ * - `single-twoup` — one landscape screen with the two-up setting on: a
+ *   side-by-side spread in a single window.
+ * - `single` — one portrait screen, or two-up disabled: one page at a time.
+ */
+export function effectiveDisplayMode(): DisplayMode {
+  const placement = currentPlacement();
+  if (placement.mode === 'dual') return 'dual';
+  if (isSingleLandscape(placement) && getSettings().landscapeTwoUp) return 'single-twoup';
+  return 'single';
 }
 
 function createWindow(role: WindowRole, bounds: DisplayInfo['bounds'], windowed: boolean): BrowserWindow {
@@ -91,7 +107,8 @@ function createWindow(role: WindowRole, bounds: DisplayInfo['bounds'], windowed:
  */
 export function createReaderWindows(windowed = false): ReaderWindow[] {
   const placement = currentPlacement();
-  log('placement mode =', placement.mode, '- displays:', screen.getAllDisplays().length);
+  const mode = effectiveDisplayMode();
+  log('placement =', placement.mode, 'effective =', mode, '- displays:', screen.getAllDisplays().length);
 
   if (placement.mode === 'dual') {
     return [
@@ -100,14 +117,10 @@ export function createReaderWindows(windowed = false): ReaderWindow[] {
     ];
   }
 
-  if (placement.mode === 'single') {
-    return [
-      { role: 'single', window: createWindow('single', placement.display.bounds, windowed) },
-    ];
-  }
-
-  // Ambiguous: open a single window on the primary display; the renderer can show
-  // the tap-to-identify UI. Use the primary display's bounds.
-  const primary = screen.getPrimaryDisplay();
-  return [{ role: 'single', window: createWindow('single', primary.bounds, windowed) }];
+  // One physical display. `twoup` paints both pages side-by-side on a landscape
+  // screen; `single` shows one page. Ambiguous → primary display, single-page.
+  const bounds =
+    placement.mode === 'single' ? placement.display.bounds : screen.getPrimaryDisplay().bounds;
+  const role: WindowRole = mode === 'single-twoup' ? 'twoup' : 'single';
+  return [{ role, window: createWindow(role, bounds, windowed) }];
 }

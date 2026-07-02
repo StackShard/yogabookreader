@@ -14,8 +14,12 @@ import type {
   ZoomPreset,
 } from '../core/types.js';
 
-/** Which window this renderer is. `single` = folded-device fallback. */
-export type WindowRole = 'left' | 'right' | 'single';
+/**
+ * Which window this renderer is.
+ * `single` = one portrait screen (one page). `twoup` = one landscape screen
+ * showing both pages of a spread side-by-side in this single window.
+ */
+export type WindowRole = 'left' | 'right' | 'single' | 'twoup';
 
 export type DocumentType = 'pdf' | 'cbz' | 'cbr';
 
@@ -52,6 +56,12 @@ export interface DocumentInfo {
 /** Per-window instruction to render the current spread. */
 export interface RenderInstruction {
   current: RenderTarget;
+  /**
+   * The spread's other page, sent only to a `twoup` window (one landscape
+   * screen painting both pages side-by-side). `current` is the left page,
+   * `secondary` the right. Undefined for one-page windows.
+   */
+  secondary?: RenderTarget;
   /** Targets to warm into the prerender buffer (next/prev for this window). */
   prefetch: RenderTarget[];
   zoomPreset: ZoomPreset;
@@ -116,6 +126,7 @@ export const RendererToMain = {
   requestOverlay: 'r2m:request-overlay',
   toggleFullScreen: 'r2m:toggle-full-screen',
   setAdaptiveBrightnessDisabled: 'r2m:set-adaptive-brightness-disabled',
+  setLandscapeTwoUp: 'r2m:set-landscape-two-up',
   requestHelp: 'r2m:request-help',
   dismissHelp: 'r2m:dismiss-help',
   quit: 'r2m:quit',
@@ -187,6 +198,8 @@ export interface ReaderBridge {
   requestOverlay(): void;
   toggleFullScreen(): void;
   setAdaptiveBrightnessDisabled(disabled: boolean): void;
+  /** Toggle side-by-side two-up on a single landscape screen; rebuilds windows. */
+  setLandscapeTwoUp(enabled: boolean): void;
   requestHelp(): void;
   dismissHelp(): void;
   quit(): void;
@@ -235,6 +248,10 @@ export interface LayoutInfo {
   mode: 'dual' | 'single' | 'ambiguous';
   displayCount: number;
   portraitCount: number;
+  /** True for a single landscape display — where the two-up spread toggle applies. */
+  isSingleLandscape: boolean;
+  /** Current value of the landscape two-up setting (for the overlay toggle state). */
+  landscapeTwoUp: boolean;
 }
 
 /** App version + build identifier, shown on the help screen. */
