@@ -38,5 +38,15 @@ nsis:
   installerHeaderIcon: build/icon.ico
 portable:
   artifactName: YogaBookReader-${version}-portable.exe
+  # Shown by the portable stub WHILE it self-extracts the runtime to %TEMP% —
+  # the only launch indication possible during that pre-app gap (the app's own
+  # code hasn't started yet). Must be a 24-bit .bmp; see scripts/gen-portable-splash.mjs.
+  splashImage: build/portable-splash.bmp
+  # NOTE: intentionally NOT setting `unpackDirName`. Its default is a per-build
+  # UUID, so the same .exe reuses its unpacked copy across launches while a new
+  # version re-extracts into a fresh dir. Pinning a static name would reuse a
+  # stale old version after an update — the exact bug we must avoid.
 # Portable target: no installer, no registry entries, single .exe (PRD §Packaging).
+# The portable build self-extracts on launch, so it starts slower than the NSIS
+# installer (which runs in place); see the README download section.
 # NSIS target: traditional installer with Start menu entries and uninstaller.

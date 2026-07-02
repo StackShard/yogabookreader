@@ -37,23 +37,13 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: Yoga Book Reader ${{ github.event.inputs.tag || github.ref_name }}
           body: |
-            ## Changes in v1.1.8
+            ## Changes in v1.1.9
 
-            Performance release: launch delay, massive PDF memory reduction, and progress bars.
+            Portable launch feedback.
 
             ### Launch
-            - **Window appears before disk I/O** — splash visible in 1–3s (was 20+s with large libraries).
-            - **pdf.js lazy-loaded** on splash — 650KB module no longer blocks first paint.
-            - **Spinner stays until content is ready** — no blank library during fresh scans.
-
-            ### Memory
-            - **HTTP Range requests** in the protocol handler — pdf.js streams only what it needs.
-            - **Streaming enabled** in renderers — ~75% memory reduction per renderer for large PDFs.
-            - **Main-process PDF parsing uses `file://` URL** — eliminates 200+MB buffer allocation.
-
-            ### Progress
-            - **Determinate progress bar** for library scan, comic extraction, and PDF classification.
-            - Progress callbacks in every long-running main-process operation.
+            - **Portable build shows a "Loading…" splash while it extracts.** The portable `.exe` unpacks itself (and Defender scans it) before the app can start — previously a blank, frozen-looking gap of up to ~20s on slow disks. It now shows a branded splash during that unpack so it's clearly launching.
+            - **README explains the portable-vs-installer launch-speed difference** — the installer runs in place and launches fast; the portable build trades a slower first launch for being a single no-install file. Use the installer if launch time bothers you.
           draft: false
           # Tags containing "beta" (e.g. v1.1.4-beta) publish as pre-releases.
           prerelease: ${{ contains(github.event.inputs.tag || github.ref_name, 'beta') }}
