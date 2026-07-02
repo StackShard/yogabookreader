@@ -2,6 +2,20 @@
 
 All notable changes to Yoga Book Reader are documented here.
 
+## [1.1.9] — 2026-07-02
+
+### Launch
+- **Portable build now shows a "Loading…" splash while it extracts.** The
+  portable `.exe` unpacks itself (and Windows Defender scans it) before the app
+  can start — previously a blank, frozen-looking gap of up to ~20s on slow
+  disks. It now displays a branded splash during that unpack so it's clearly
+  launching. (The app's own optimizations can't help here — the gap is before
+  any app code runs.)
+- **README now explains the portable-vs-installer launch-speed difference.**
+  The installer runs in place and launches fast; the portable build trades a
+  slower first launch for being a single no-install file. The installer is
+  recommended for anyone bothered by launch time.
+
 ## [1.1.8] — 2026-07-02
 
 ### Launch
