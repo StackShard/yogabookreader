@@ -18,6 +18,8 @@ const REASON_TITLES: Record<ReaderError['reason'], string> = {
 export interface ErrorActions {
   onPickFile(): void;
   onRemoveRecent(filePath: string): void;
+  /** Plain escape back to the splash/library, leaving the file alone. */
+  onBack(): void;
 }
 
 function actionButton(
@@ -65,6 +67,7 @@ export function showError(
   });
   buttons.append(
     actionButton('Choose another file', () => actions.onPickFile(), 'primary-btn'),
+    actionButton('Back to library', () => actions.onBack()),
     actionButton('Remove from Recent', () => actions.onRemoveRecent(error.filePath)),
     detailsBtn,
   );

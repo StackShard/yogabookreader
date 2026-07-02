@@ -691,6 +691,22 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 10px;
   letter-spacing: 0.05em;
+  transition: color 0.15s;
+}
+
+/* Brief flash when typed input clamps to the last page. */
+.dialpad-display.dialpad-clamped {
+  color: var(--accent);
+}
+
+/* "of N pages" range hint under the display. */
+.dialpad-hint {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
+  padding: 0 12px;
+  margin: -6px 0 10px;
+  min-height: 1em;
 }
 
 .dialpad-grid {

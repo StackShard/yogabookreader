@@ -46,7 +46,12 @@ export interface RenderInstruction {
   spreadIndex: number;
   /** 0-based page indices shown in the current spread (for progress display). */
   pages: number[];
+  /** Current reading direction, so input mapping tracks the ↔ toggle live. */
+  readingDirection: ReadingDirection;
 }
+
+/** Outcome of a save-page request, so the renderer can report failures. */
+export type SavePageResult = 'saved' | 'canceled' | 'failed';
 
 /** A recent-files entry as the splash screen consumes it. */
 export interface RecentFileView {
@@ -159,10 +164,9 @@ export interface ReaderBridge {
   resetSpread(): void;
   /**
    * Save one page to a file. `dataUrl` carries the rendered PNG for PDF pages;
-   * pass null for comic pages (main copies the original image). Resolves true
-   * when a file was written, false if the user cancelled.
+   * pass null for comic pages (main copies the original image).
    */
-  savePage(pageIndex: number, dataUrl: string | null): Promise<boolean>;
+  savePage(pageIndex: number, dataUrl: string | null): Promise<SavePageResult>;
   /** Print one page via the system print dialog. `dataUrl` as for {@link savePage}. */
   printPage(pageIndex: number, dataUrl: string | null): void;
   requestOverlay(): void;

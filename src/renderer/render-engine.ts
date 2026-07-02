@@ -78,6 +78,11 @@ function getImage(imagePath: string): Promise<HTMLImageElement> {
     el.onload = () => resolve(el);
     el.onerror = () => reject(new Error(`Failed to load image: ${imagePath}`));
     el.src = fileUrl(imagePath);
+  }).catch((err) => {
+    // Evict the failed load so a transient decode/IPC hiccup can be retried
+    // (mirrors the PDF page cache; a cached rejection would fail forever).
+    imageCache.delete(imagePath);
+    throw err;
   });
   imageCache.set(imagePath, img);
   evict(imageCache, IMAGE_CACHE_CAP);

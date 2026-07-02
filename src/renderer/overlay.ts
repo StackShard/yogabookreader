@@ -18,8 +18,6 @@ const QUIT_CONFIRM_MS = 5000;
 const SWIPE_DISMISS_PX = 150;
 const SWIPE_COLLAPSE_PX = 60;
 
-const ZOOM_PRESETS: ZoomPreset[] = ['fit-height', 'fit-width', 'full-bleed'];
-
 export interface OverlayCallbacks {
   onPrev(): void;
   onNext(): void;
@@ -48,13 +46,15 @@ export class ControlOverlay {
   private expanded = false;
   private hovered = false;
   private adaptiveDisabled: boolean;
-  private currentZoom: ZoomPreset = 'fit-height';
   private bookTitle = '';
   private pageLabel = '';
   private dialpadEl: HTMLElement | null = null;
   private dialpadDisplay: HTMLElement | null = null;
+  private dialpadHint: HTMLElement | null = null;
   private dialpadValue = '';
   private dialpadOpen = false;
+  private clampTimer: ReturnType<typeof setTimeout> | null = null;
+  private totalPages = 0;
 
   constructor(
     private readonly cb: OverlayCallbacks,
@@ -232,12 +232,22 @@ export class ControlOverlay {
     this.dialpadDisplay = document.createElement('div');
     this.dialpadDisplay.className = 'dialpad-display';
 
+    this.dialpadHint = document.createElement('div');
+    this.dialpadHint.className = 'dialpad-hint';
+
     const grid = document.createElement('div');
     grid.className = 'dialpad-grid';
 
     const appendDigit = (d: string) => {
-      this.dialpadValue += d;
-      if (this.dialpadDisplay) this.dialpadDisplay.textContent = this.dialpadValue;
+      let next = this.dialpadValue + d;
+      // Flash-clamp anything beyond the last page so the limit is visible
+      // instead of the jump silently landing on the final spread.
+      if (this.totalPages > 0 && Number(next) > this.totalPages) {
+        next = String(this.totalPages);
+        this.flashClamp();
+      }
+      this.dialpadValue = next;
+      if (this.dialpadDisplay) this.dialpadDisplay.textContent = next;
     };
 
     const backspace = () => {
@@ -267,7 +277,7 @@ export class ControlOverlay {
       grid.appendChild(btn);
     }
 
-    pad.append(this.dialpadDisplay, grid);
+    pad.append(this.dialpadDisplay, this.dialpadHint, grid);
     backdrop.appendChild(pad);
     backdrop.addEventListener('click', () => this.closeDialPad());
     pad.addEventListener('click', (e) => e.stopPropagation());
@@ -280,9 +290,21 @@ export class ControlOverlay {
     if (!this.dialpadEl) this.buildDialPad();
     this.dialpadValue = '';
     if (this.dialpadDisplay) this.dialpadDisplay.textContent = '';
+    if (this.dialpadHint) {
+      this.dialpadHint.textContent = this.totalPages > 0 ? `of ${this.totalPages} pages` : '';
+    }
     this.dialpadOpen = true;
     this.dialpadEl!.classList.remove('hidden');
     if (this.hideTimer) { clearTimeout(this.hideTimer); this.hideTimer = null; }
+  }
+
+  private flashClamp(): void {
+    this.dialpadDisplay?.classList.add('dialpad-clamped');
+    if (this.clampTimer) clearTimeout(this.clampTimer);
+    this.clampTimer = setTimeout(
+      () => this.dialpadDisplay?.classList.remove('dialpad-clamped'),
+      350,
+    );
   }
 
   private closeDialPad(): void {
@@ -337,6 +359,25 @@ export class ControlOverlay {
     this.poke();
   }
 
+  /** Centre-tap toggle: hide when visible, show otherwise. */
+  toggle(): void {
+    if (this.root.classList.contains('hidden')) this.show();
+    else this.hide();
+  }
+
+  /** Close the topmost layer (dial pad before the bar). True if one closed. */
+  dismissTopmost(): boolean {
+    if (this.dialpadOpen) {
+      this.closeDialPad();
+      return true;
+    }
+    if (!this.root.classList.contains('hidden')) {
+      this.hide();
+      return true;
+    }
+    return false;
+  }
+
   hide(): void {
     this.root.classList.add('hidden');
     this.hideQuitConfirm();
@@ -368,20 +409,13 @@ export class ControlOverlay {
 
   /** Highlight the button matching the current zoom preset. */
   setActiveZoom(preset: ZoomPreset): void {
-    this.currentZoom = preset;
     for (const [p, btn] of this.zoomButtons) {
       btn.classList.toggle('overlay-btn-active', p === preset);
     }
   }
 
-  /** Cycle to the next zoom preset (used by double-tap). */
-  cycleZoom(): void {
-    const idx = ZOOM_PRESETS.indexOf(this.currentZoom);
-    const next = ZOOM_PRESETS[(idx + 1) % ZOOM_PRESETS.length];
-    this.cb.onSetZoom(next);
-  }
-
   setProgress(pages: number[], totalPages: number): void {
+    this.totalPages = totalPages;
     if (pages.length === 0 || totalPages <= 0) {
       this.pageLabel = '';
     } else {

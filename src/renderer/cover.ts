@@ -90,11 +90,23 @@ async function renderImageCover(url: string): Promise<string | null> {
   return canvas.toDataURL('image/jpeg', 0.7);
 }
 
+// In-flight generations by file path: a file shown on two shelves (Recent AND
+// Library), or a re-render racing a slow generation, must not run twice.
+const inFlight = new Map<string, Promise<string | null>>();
+
 /**
  * Return a cover image URL for a file: the cached thumbnail if present, otherwise
  * rendered + persisted on demand. Resolves null if a cover can't be produced.
  */
-export async function getCover(filePath: string): Promise<string | null> {
+export function getCover(filePath: string): Promise<string | null> {
+  const running = inFlight.get(filePath);
+  if (running) return running;
+  const job = generateCover(filePath).finally(() => inFlight.delete(filePath));
+  inFlight.set(filePath, job);
+  return job;
+}
+
+async function generateCover(filePath: string): Promise<string | null> {
   const cached = await window.reader.getCachedCover(filePath).catch(() => null);
   if (cached) return cached;
 
