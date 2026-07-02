@@ -83,6 +83,7 @@ export const RendererToMain = {
   getLibraryCached: 'r2m:get-library-cached',
   pickFolder: 'r2m:pick-folder',
   getCachedCover: 'r2m:get-cached-cover',
+  getCachedCovers: 'r2m:get-cached-covers',
   getCoverSource: 'r2m:get-cover-source',
   saveCover: 'r2m:save-cover',
   setBrightness: 'r2m:set-brightness',
@@ -194,6 +195,13 @@ export interface ReaderBridge {
   getLayoutInfo(): Promise<LayoutInfo>;
   getAppInfo(): Promise<AppInfo>;
   getCachedCover(filePath: string): Promise<string | null>;
+  /**
+   * Batch cache check: which of `filePaths` already have a cached cover, in
+   * one round trip. Returns only the hits (path → cover URL); a path absent
+   * from the result is a miss. Used instead of N individual
+   * {@link getCachedCover} calls when rendering a large library.
+   */
+  getCachedCovers(filePaths: string[]): Promise<Record<string, string>>;
   getCoverSource(filePath: string): Promise<CoverSource | null>;
   saveCover(filePath: string, dataUrl: string): Promise<string | null>;
 }

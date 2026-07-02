@@ -5,3 +5,4 @@ export * from './spread.js';
 export * from './navigation.js';
 export * from './placement.js';
 export * from './state.js';
+export * from './covers.js';
